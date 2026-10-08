@@ -1,0 +1,16 @@
+{
+  "description": "HTTP 409 during StatCan's maintenance window (midnight-8:30 AM ET). Constructed rather than captured live - this only happens in that window, not on demand. WDS gives no JSON body for this case (wds_helpers.py in statcan-api-exploration just checks the status code; there's nothing to parse), so body is null.",
+  "captured_at": "2026-10-08T00:00:00Z",
+  "source": "constructed",
+  "request": {
+    "method": "getDataFromVectorsAndLatestNPeriods",
+    "body": [
+      {
+        "vectorId": 2063949,
+        "latestN": 1
+      }
+    ]
+  },
+  "http_status": 409,
+  "body": null
+}

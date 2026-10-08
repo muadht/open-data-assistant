@@ -1,0 +1,18 @@
+{
+  "description": "getDataFromVectorsAndLatestNPeriods called with vectorId 0 - WDS rejects this outright with HTTP 406. The same happens for a non-positive latestN. This is why get_data must never forward a vectorId: 0 it got back from a lookup into a data-fetch call - see nonexistent_coordinate.json / census_series_info.json for where that 0 comes from.",
+  "captured_at": "2026-10-08T00:00:00Z",
+  "source": "live",
+  "request": {
+    "method": "getDataFromVectorsAndLatestNPeriods",
+    "body": [
+      {
+        "vectorId": 0,
+        "latestN": 1
+      }
+    ]
+  },
+  "http_status": 406,
+  "body": {
+    "message": "vector id or latest N is negative or zero"
+  }
+}

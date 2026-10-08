@@ -1,0 +1,33 @@
+{
+  "description": "getSeriesInfoFromCubePidCoord for a Census table (98100001, Ontario population 2021). vectorId is 0 - Census tables have no vector IDs - but SeriesTitleEn is populated, which is the actual discriminator between this and a genuinely non-existent coordinate (see nonexistent_coordinate.json).",
+  "captured_at": "2026-10-08T00:00:00Z",
+  "source": "live",
+  "request": {
+    "method": "getSeriesInfoFromCubePidCoord",
+    "body": [
+      {
+        "productId": 98100001,
+        "coordinate": "7.1.0.0.0.0.0.0.0.0"
+      }
+    ]
+  },
+  "http_status": 200,
+  "body": [
+    {
+      "status": "SUCCESS",
+      "object": {
+        "responseStatusCode": 0,
+        "productId": 98100001,
+        "coordinate": "7.1.0.0.0.0.0.0.0.0",
+        "vectorId": 0,
+        "frequencyCode": 18,
+        "scalarFactorCode": 0,
+        "decimals": 0,
+        "terminated": 0,
+        "SeriesTitleEn": "Ontario;Population, 2021",
+        "SeriesTitleFr": "Ontario;Population, 2021",
+        "memberUomCode": 0
+      }
+    }
+  ]
+}
