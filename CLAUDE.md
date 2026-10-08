@@ -4,25 +4,42 @@ Natural-language chat assistant over Statistics Canada's Web Data Service (WDS).
 
 ## Related repos
 
-- `../statcan-api-exploration` — the actual tested WDS API flows (`WDS_API_FLOW.md`, `wds_helpers.py`, notebooks). If you're unsure how a WDS endpoint behaves, check there first; it's annotated with what was actually tested against the live API vs. docs-only/unverified.
-- `../DataDiscovery` — the existing catalogue-search implementation (`statcan_discovery` package): `build-catalogue`, OpenSearch ingestion, hybrid BM25+kNN search. The `search_tables` MCP tool will eventually call into this (or a promoted version of it), not reimplement search from scratch.
+- `../statcan-api-exploration` — the actual tested WDS API flows (`WDS_API_FLOW.md`, `wds_helpers.py`, notebooks). If you're unsure how a WDS endpoint behaves, check there first; it's annotated with what was actually tested against the live API vs. docs-only/unverified. Still the reference for tickets #1/#2 (WDS fixtures and the general-purpose WDS client).
+- `../DataDiscovery` — the *original* catalogue-search implementation this repo's `catalogue/` and `search/` packages were migrated from (tickets #6/#7). No longer a runtime dependency of this project; it's left as-is and not being maintained from here. If you need historical context for *why* something in `catalogue/`/`search/` is built the way it is, its docstrings carry that reasoning forward, so you shouldn't need to go back to that repo.
 
 ## Layout
 
 ```
 src/open_data_assistant/
+  catalogue/
+    wds_client.py     # Minimal WDS client scoped to catalogue-building calls
+                       # (getAllCubesList, getCodeSets, getCubeMetadata). Not the same
+                       # client as the one tickets #1/#2 build for the MCP tools.
+    catalogue.py       # Builds the flat product catalogue (CatalogueRecord) from WDS.
+    cli.py             # `build-catalogue` entrypoint -> writes data/catalogue.json.
+  search/
+    config.py          # OpenSearch/embedding config, overridable via env vars.
+    schema.py           # OpenSearch index mapping.
+    documents.py        # CatalogueRecord -> OpenSearch document.
+    embeddings.py        # EmbeddingProvider protocol + SentenceTransformerEmbedder.
+    query.py              # Natural-language query -> structured filters + lexical text.
+    hybrid.py              # Promoted BM25 + kNN + RRF fusion (ticket #6). No Streamlit.
+    indexer.py              # Bulk-indexes documents into OpenSearch.
+    pipeline.py              # Orchestrates catalogue.json -> embed -> index.
+    cli.py                    # `ingest-opensearch` entrypoint.
   mcp/
     schemas.py       # Pydantic models for the 4 MCP tool inputs/outputs - the actual
                       # tool contract, not just documentation of it. Mirrors
                       # docs/mcp-tools-and-data-contract.md; keep both in sync.
-tests/
-  mcp/
-    test_schemas.py   # uses real values from docs/question-catalogue-eval.xlsx, not
-                       # made-up numbers
+    tools/
+      search_tables.py  # The search_tables MCP tool (ticket #7) - uses search/hybrid.py.
+tests/              # mirrors the src/ layout above
 docs/                  # planning documents - read these, don't duplicate their content here
 ```
 
-As the MCP server and orchestration service get built, they go under `src/open_data_assistant/` as sibling packages to `mcp/` (e.g. `agent/`, `api/`), not inside `mcp/`.
+As the remaining MCP tools and the orchestration service get built, they go under `src/open_data_assistant/` as sibling packages (e.g. `agent/`, `api/`), not inside `mcp/` or `search/`.
+
+Running `build-catalogue`/`ingest-opensearch` for real needs a running OpenSearch instance (not set up in this repo yet - deliberately holding off on Docker until there's a backend to containerize alongside it) and will download the `sentence-transformers/all-MiniLM-L6-v2` model on first use.
 
 ## Commands
 

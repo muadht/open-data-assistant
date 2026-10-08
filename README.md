@@ -17,3 +17,14 @@ uv run pytest
 uv run ruff check .
 uv run mypy .
 ```
+
+## Building the catalogue index
+
+Needs a running OpenSearch instance (not set up in this repo yet — see [docs/architecture-overview.md](docs/architecture-overview.md)'s open items on hosting/Docker).
+
+```bash
+uv run build-catalogue      # WDS -> data/catalogue.json (not committed; see .gitignore)
+uv run ingest-opensearch    # data/catalogue.json -> OpenSearch, embedding each record
+```
+
+Both are configurable via environment variables (`OPENSEARCH_HOST`, `OPENSEARCH_PORT`, `OPENSEARCH_INDEX`, `EMBEDDING_MODEL`, etc.) — see `src/open_data_assistant/search/config.py` for the full list and defaults.

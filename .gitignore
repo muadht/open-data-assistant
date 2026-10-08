@@ -9,4 +9,7 @@ wheels/
 # Virtual environments
 .venv
 
+# Ingested data dumps (e.g. data/catalogue.json, from `uv run build-catalogue`)
+/data/
+
 .DS_Store

@@ -12,24 +12,24 @@ This leads to a small, ordered tool set: search for a table, inspect its structu
 
 ### `search_tables(query, filters?) -> TableCandidate[]`
 
-Searches the catalogue index (built by the existing DataDiscovery repo — see Index design below) for tables matching a natural-language query. Ranking is hybrid: BM25 lexical + embedding (kNN) similarity, fused with reciprocal rank fusion (RRF).
+Searches the catalogue index (built by this repo's `catalogue/` and `search/` packages — see Index design below) for tables matching a natural-language query. Ranking is hybrid: BM25 lexical + embedding (kNN) similarity, fused with reciprocal rank fusion (RRF).
 
-Before ranking, the query string goes through a deliberately crude regex extraction pass (already implemented in `statcan_discovery.search.query.parse_query`): an 8-digit productId or a `###-####` CANSIM id is pulled out as an **exact-match** short-circuit (skips ranking entirely), a 4-digit year or year range becomes a `coverage` overlap filter, and an unambiguous frequency word (daily/weekly/monthly/quarterly/annual) becomes a `frequency` filter. Whatever remains of the query text is what actually hits BM25 and the embedding model — this exists because leaving years in the lexical text was observed to cause false matches (e.g. "2010" in a query matching a table titled "...applied for patents in 2010"). `search_tables`'s `filters` parameter is applied **in addition to** this auto-extraction, not instead of it — the MCP tool should not re-implement year/frequency parsing.
+Before ranking, the query string goes through a deliberately crude regex extraction pass (`open_data_assistant.search.query.parse_query`): an 8-digit productId or a `###-####` CANSIM id is pulled out as an **exact-match** short-circuit (skips ranking entirely), a 4-digit year or year range becomes a `coverage` overlap filter, and an unambiguous frequency word (daily/weekly/monthly/quarterly/annual) becomes a `frequency` filter. Whatever remains of the query text is what actually hits BM25 and the embedding model — this exists because leaving years in the lexical text was observed to cause false matches (e.g. "2010" in a query matching a table titled "...applied for patents in 2010"). `search_tables`'s `filters` parameter is applied **in addition to** this auto-extraction, not instead of it — the MCP tool should not re-implement year/frequency parsing.
 
 - `query`: natural-language string (e.g. "unemployment rate by province").
-- `filters` (optional): subject, frequency, geography level, archived/active — merged with whatever the regex pass already extracted.
+- `filters` (optional): subject, frequency, archived/active — merged with whatever the regex pass already extracted.
 - Returns a ranked list of `TableCandidate`, each with enough detail for the LLM to pick one or ask the user to disambiguate — not the full table structure (that's `get_table_structure`).
 
-**Implementation gap**: the hybrid RRF fusion (`bm25_search` + `knn_search` + RRF merge) currently exists only in `DataDiscovery/tools/search_app.py`, which is explicitly marked as a disposable Streamlit tool, not a reusable library function. Before `search_tables` can be built, this needs to move into `statcan_discovery.search` as an importable function.
+Implemented in `open_data_assistant.mcp.tools.search_tables`, backed by the promoted hybrid search in `open_data_assistant.search.hybrid` (tickets #6/#7 — no longer a gap).
 
 ```json
 TableCandidate {
-  "productId": "14100287",
-  "titleEn": "Labour force characteristics by province, monthly, seasonally adjusted",
-  "subject": ["Labour"],
+  "product_id": 14100287,
+  "title_en": "Labour force characteristics by province, monthly, seasonally adjusted",
+  "subjects": ["Labour"],
   "frequency": "Monthly",
-  "dateRange": { "start": "1976-01", "end": "2025-09" },
-  "isActive": true,
+  "date_range": { "start": "1976-01-01", "end": "2025-09-01" },
+  "is_active": true,
   "score": 0.91
 }
 ```
@@ -40,19 +40,19 @@ Wraps `getCubeMetadata` (and `getCodeSets` where needed). Returns the table's di
 
 ```json
 TableStructure {
-  "productId": "14100287",
-  "titleEn": "...",
+  "product_id": 14100287,
+  "title_en": "...",
   "dimensions": [
-    { "dimensionPositionId": 1, "nameEn": "Geography", "hasUom": false },
-    { "dimensionPositionId": 2, "nameEn": "Labour force characteristics", "hasUom": false }
+    { "dimension_position_id": 1, "name_en": "Geography", "has_uom": false },
+    { "dimension_position_id": 2, "name_en": "Labour force characteristics", "has_uom": false }
   ],
-  "defaultScalarFactor": "units",
+  "default_scalar_factor": "units",
   "frequency": "Monthly",
-  "isCensusTable": false
+  "is_census_table": false
 }
 ```
 
-`isCensusTable` is derived from the productId prefix (`9810...`) and flags that this table has no vector IDs — only coordinate-based fetches apply.
+`is_census_table` is derived from the productId prefix (`9810...`) and flags that this table has no vector IDs — only coordinate-based fetches apply.
 
 ### `find_members(productId, dimensionPositionId, query) -> MemberCandidate[]`
 
@@ -60,9 +60,9 @@ Resolves a phrase like "Ontario" or "25 to 34 years" to member IDs within one di
 
 ```json
 MemberCandidate {
-  "memberId": 35,
-  "nameEn": "Ontario",
-  "parentMemberId": null,
+  "member_id": 35,
+  "name_en": "Ontario",
+  "parent_member_id": null,
   "terminated": false
 }
 ```
@@ -87,23 +87,23 @@ One shape, shared by chat answers, charts, and exports — all three are rendere
 
 ```json
 DataResult {
-  "productId": "14100287",
-  "titleEn": "Labour force characteristics by province, monthly, seasonally adjusted",
+  "product_id": 14100287,
+  "title_en": "Labour force characteristics by province, monthly, seasonally adjusted",
   "coordinate": "1.35.1.0.0.0.0.0.0.0",
-  "vectorId": "v2062815",
+  "vector_id": 2062815,
   "series": [
     {
-      "refPer": "2025-08",
+      "ref_per": "2025-08-01",
       "value": 6.1,
       "uom": "Percent",
-      "scalarFactorApplied": true,
-      "status": "Normal",
+      "scalar_factor_applied": true,
+      "status": "normal",
       "symbol": null,
-      "securityLevel": "Unclassified"
+      "security_level": "Unclassified"
     }
   ],
-  "sourceUrl": "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410028701",
-  "retrievedAt": "2026-10-07T12:00:00Z"
+  "source_url": "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410028701",
+  "retrieved_at": "2026-10-07T12:00:00Z"
 }
 ```
 
@@ -113,16 +113,16 @@ DataResult {
 
 ## Index design and refresh
 
-This section describes what the DataDiscovery repo (`src/statcan_discovery/`) actually does today, not an aspiration — verified by reading `catalogue.py`, `search/schema.py`, `search/documents.py`, and `search/pipeline.py` directly.
+This section describes what `src/open_data_assistant/catalogue/` and `search/` actually do today, not an aspiration. This code was migrated from the original DataDiscovery repo (tickets #6/#7) into this one so the project no longer depends on that repo at runtime; the behavior below is unchanged from what was verified there.
 
 - **Build is two-stage**: `build_catalogue()` calls `getAllCubesList` + `getCodeSets` for a coarse record per product (title, dates, frequency, top-level 2-digit subject code, dimension names only — no members). `enrich_from_cube_metadata()` then calls `getCubeMetadata` in chunks of 50 productIds (45s timeout per chunk; a chunk that times out is skipped and keeps its coarse data) to replace that with the fine-grained subject hierarchy (full ancestor chain, since subject codes are a 2/4/6-digit prefix hierarchy) and dimension **members**.
 - **Only near-root members are indexed** (hierarchy depth ≤ 1: the root and its direct children), not every leaf. This is deliberate — some dimensions (fine census geography, detailed classifications) have tens of thousands of leaf members, which would be noise for search/embeddings. Consequence for this contract: the catalogue index is sufficient for `search_tables`, but **not** for resolving a specific member phrase — that's exactly why `find_members` queries live rather than reading the index (see below).
 - **Indexed fields** (OpenSearch mapping in `search/schema.py`): bilingual `title.{en,fr}`, `subjects`/`surveys` (code + en/fr text), `dimensions` (nested: name + near-root values, en/fr), `coverage.{start_date,end_date}`, `frequency`, `archived`, `cansim_id`, plus a `knn_vector` `embedding` field and a plain-text `search_text` field.
 - **Mapping is bilingual-ready; embeddings are not**: `search_text` (what gets embedded) is built from English fields only (`build_search_text` in `search/documents.py`). FR fields are indexed and could support FR lexical search, but there's no FR embedding model wired in yet — consistent with English-only being the MVP decision, but worth knowing the schema isn't blocking French later.
-- **Ranking today**: BM25 (`multi_match` on `title.en^3` + `search_text`) and kNN cosine similarity over the embedding, fused via RRF (`1/(60+rank)` per list) — but this fusion function currently lives only in the throwaway `tools/search_app.py`, not in `src/`. There is **no boost for active or recently-updated tables** in the current code — only a binary `archived` include/exclude filter. Boosting recency/active status is a design intent from the original brief, not something built yet.
+- **Ranking today**: BM25 (`multi_match` on `title.en^3` + `search_text`) and kNN cosine similarity over the embedding, fused via RRF (`1/(60+rank)` per list) — implemented as an importable function in `search/hybrid.py`, called directly by `search_tables`. There is **no boost for active or recently-updated tables** in the current code — only a binary `archived` include/exclude filter. Boosting recency/active status is a design intent from the original brief, not something built yet.
 - **Embedding model**: `sentence-transformers/all-MiniLM-L6-v2`, run locally via `SentenceTransformerEmbedder`. Forced to CPU deliberately — Apple MPS was observed to crash this model under concurrent callers (e.g. Streamlit), which matters if the MCP server embeds queries on the same machine.
 - **Refresh**: **not implemented.** `getChangedCubeList` (daily incremental refresh) is listed in `WDS_API_FLOW.md` as docs-only / never tested against the live API. Today, refreshing the catalogue means rerunning `build-catalogue` (a full `getAllCubesList` + chunked `getCubeMetadata` pass) from scratch. Treat incremental refresh as an open design item, not a given.
-- **Current data**: `data/catalogue.json` already exists (72MB, built 2025-09-19) — there is a real catalogue to evaluate search quality against, not just a plan.
+- **Current data**: a real, built `data/catalogue.json` (72MB) exists from the original DataDiscovery repo (built 2025-09-19) — proof there's a real catalogue to evaluate search quality against, not just a plan. It hasn't been copied into this repo (data files aren't committed - see `.gitignore`); rerun `uv run build-catalogue` here to produce a fresh one when needed.
 - **Member resolution** (`find_members`) is not part of the catalogue index at all — it queries `getCubeMetadata`/`getCodeSets` per table at request time (or a short-lived cache), both because member meaning is table-specific and because the index deliberately excludes leaf-level members (see above).
 
 ## WDS quirks the server must handle
@@ -145,8 +145,6 @@ These are implementation requirements for the MCP server, not suggestions:
 
 ## Open items
 
-- Schemas above should be formalized as Pydantic/JSON Schema (separate deliverable) before implementation starts.
-- The hybrid RRF search (`bm25_search`/`knn_search`/fusion) needs to move out of `DataDiscovery/tools/search_app.py` and into an importable function in `src/statcan_discovery/search/` before `search_tables` can call it.
 - No catalogue refresh job exists yet (`getChangedCubeList` is docs-only, untested). Decide whether incremental refresh is worth building for the MVP or whether periodic full `build-catalogue` reruns are good enough.
 - No active/recency ranking boost exists yet — only an `archived` filter. Decide whether this is needed for the MVP or deferred.
 - Retrieval quality has not been measured against real queries yet — `data/catalogue.json` and the OpenSearch index exist, but there's no evaluation harness (this is what the question catalogue & evaluation deliverable is for).
