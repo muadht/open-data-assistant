@@ -171,6 +171,58 @@ def test_invalid_tool_args_trigger_a_retry_not_a_crash(httpx_mock: HTTPXMock) ->
     assert len(retries) == 1
 
 
+def test_business_rule_error_triggers_a_retry_not_a_crash(httpx_mock: HTTPXMock) -> None:
+    """A ValueError raised from *inside* get_data (not a Pydantic argument-validation
+    failure, e.g. a coordinate that resolves to no real series) must also become a
+    ModelRetry the model can react to, not an unhandled exception that crashes the run -
+    see agent/tools.py's _retry_on_value_error."""
+    _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata", times=2)
+    _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
+    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "nonexistent_coordinate")
+    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
+    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "normal_data_point")
+
+    # Geography member 99 doesn't exist on this table (see nonexistent_coordinate.json) -
+    # the agent should recover by correcting it to the real Ontario member (7).
+    bad_selections = {1: 99, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
+    good_selections = {1: 7, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
+    steps: list[Step] = [
+        (
+            "get_data",
+            {
+                "product_id": 14100287,
+                "selections": bad_selections,
+                "period": {"type": "latestN", "n": 1},
+            },
+        ),
+        (
+            "get_data",
+            {
+                "product_id": 14100287,
+                "selections": good_selections,
+                "period": {"type": "latestN", "n": 1},
+            },
+        ),
+        "The unemployment rate in Ontario was 6.9%.",
+    ]
+    agent = build_agent(_scripted_model(steps))
+    deps = _deps()
+
+    with deps.wds_client:
+        result = agent.run_sync("What's the unemployment rate in Ontario?", deps=deps)
+
+    assert result.output == steps[2]
+    retries = [
+        p
+        for m in result.all_messages()
+        if not isinstance(m, ModelResponse)
+        for p in m.parts
+        if isinstance(p, RetryPromptPart) and p.tool_name == "get_data"
+    ]
+    assert len(retries) == 1
+    assert "No series exists" in str(retries[0].content)
+
+
 def test_end_to_end_normal_question(httpx_mock: HTTPXMock) -> None:
     """question-catalogue-eval.xlsx row 1: full chain including find_members."""
     # get_table_structure, find_members, and get_data each call getCubeMetadata independently;
