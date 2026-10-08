@@ -2,6 +2,19 @@
 
 Natural-language chat assistant over Statistics Canada's Web Data Service (WDS). Read [docs/mvp-scope.md](docs/mvp-scope.md), [docs/architecture-overview.md](docs/architecture-overview.md), and [docs/mcp-tools-and-data-contract.md](docs/mcp-tools-and-data-contract.md) before making design decisions — they are the source of truth for scope and the tool contract, not this file.
 
+## Git workflow: never commit directly to `main`
+
+This repo uses GitHub Flow (see [CONTRIBUTING.md](CONTRIBUTING.md) for the full process). **This applies to you as an AI coding agent exactly as it applies to a human contributor** — it is not a convention you can skip because you're automated.
+
+For any change beyond a trivial doc typo:
+
+1. Create a branch off `main` (`<issue-number>-short-description`).
+2. Make the change, commit there, and push the branch.
+3. Open a pull request against `main` (`gh pr create`), referencing the issue it closes.
+4. Do not merge it yourself unless the person you're working with explicitly says to — opening the PR and reporting back is the default; merging is their call.
+
+If you find yourself about to run `git commit` while on `main`, stop and create a branch first.
+
 ## Related repos
 
 - `../statcan-api-exploration` — the actual tested WDS API flows (`WDS_API_FLOW.md`, `wds_helpers.py`, notebooks). If you're unsure how a WDS endpoint behaves, check there first; it's annotated with what was actually tested against the live API vs. docs-only/unverified. Still the reference for tickets #1/#2 (WDS fixtures and the general-purpose WDS client).
