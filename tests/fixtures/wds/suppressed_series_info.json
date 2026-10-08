@@ -1,0 +1,33 @@
+{
+  "description": "getSeriesInfoFromCubePidCoord for the same series as suppressed_value.json (productId 13100778, coordinate 1.1.1.1.0.0.0.0.0.0, vectorId 999999999) - the vector-resolution step get_data does before fetching the (suppressed) data point. Constructed to match suppressed_value.json, for the same reason that fixture is constructed rather than captured live.",
+  "captured_at": "2026-10-08T00:00:00Z",
+  "source": "constructed",
+  "request": {
+    "method": "getSeriesInfoFromCubePidCoord",
+    "body": [
+      {
+        "productId": 13100778,
+        "coordinate": "1.1.1.1.0.0.0.0.0.0"
+      }
+    ]
+  },
+  "http_status": 200,
+  "body": [
+    {
+      "status": "SUCCESS",
+      "object": {
+        "responseStatusCode": 0,
+        "productId": 13100778,
+        "coordinate": "1.1.1.1.0.0.0.0.0.0",
+        "vectorId": 999999999,
+        "frequencyCode": 6,
+        "scalarFactorCode": 0,
+        "decimals": 0,
+        "terminated": 0,
+        "SeriesTitleEn": "Canada;Some category;Suppressed series",
+        "SeriesTitleFr": "Canada;Une catégorie;Série supprimée",
+        "memberUomCode": 249
+      }
+    }
+  ]
+}

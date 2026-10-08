@@ -1,0 +1,28 @@
+{
+  "description": "getCubeMetadata for product 98100001 (Population and dwelling counts: Canada, provinces and territories) - trimmed to the table-level fields get_data actually reads (cubeTitleEn, for DataResult.title_en). The full dimension/member arrays are real but large and already covered by other fixtures (cube_metadata.json for 14100287); omitted here as noise for this fixture's purpose. captured_at reflects when the live cubeTitleEn was verified.",
+  "captured_at": "2026-10-08T00:00:00Z",
+  "source": "live",
+  "request": {
+    "method": "getCubeMetadata",
+    "body": [
+      {
+        "productId": 98100001
+      }
+    ]
+  },
+  "http_status": 200,
+  "body": [
+    {
+      "status": "SUCCESS",
+      "object": {
+        "productId": "98100001",
+        "cubeTitleEn": "Population and dwelling counts: Canada, provinces and territories",
+        "cubeTitleFr": "Chiffres de population et des logements : Canada, provinces et territoires",
+        "cubeStartDate": "2021-01-01",
+        "cubeEndDate": "2021-01-01",
+        "frequencyCode": 18,
+        "archiveStatusCode": "2"
+      }
+    }
+  ]
+}

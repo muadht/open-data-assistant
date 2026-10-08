@@ -1,0 +1,42 @@
+{
+  "description": "getDataFromVectorsAndLatestNPeriods for Canada's GDP (vectorId 62305783, latestN 1) - the real scalar-factor regression case. Raw value is 3437720 with scalarFactorCode 6 (millions, see gdp_series_info.json) - the correct answer is ~$3.44 trillion (3437720 x 10^6), not 3,437,720. Matches question-catalogue-eval.xlsx row 9. Note refPer (2026-04-01, the quarter this value is about) differs from refPerRaw (2026-06-01, the quarter-end date WDS uses internally) - get_data must surface refPer, not refPerRaw.",
+  "captured_at": "2026-10-08T00:00:00Z",
+  "source": "live",
+  "request": {
+    "method": "getDataFromVectorsAndLatestNPeriods",
+    "body": [
+      {
+        "vectorId": 62305783,
+        "latestN": 1
+      }
+    ]
+  },
+  "http_status": 200,
+  "body": [
+    {
+      "status": "SUCCESS",
+      "object": {
+        "responseStatusCode": 0,
+        "productId": 36100104,
+        "coordinate": "1.2.1.30.0.0.0.0.0.0",
+        "vectorId": 62305783,
+        "vectorDataPoint": [
+          {
+            "refPer": "2026-04-01",
+            "refPer2": "",
+            "refPerRaw": "2026-06-01",
+            "refPerRaw2": "",
+            "value": 3437720.0,
+            "decimals": 0,
+            "scalarFactorCode": 6,
+            "symbolCode": 0,
+            "statusCode": 0,
+            "securityLevelCode": 0,
+            "releaseTime": "2026-08-28T08:30",
+            "frequencyCode": 9
+          }
+        ]
+      }
+    }
+  ]
+}
