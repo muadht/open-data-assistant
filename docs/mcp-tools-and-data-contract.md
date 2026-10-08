@@ -36,7 +36,9 @@ TableCandidate {
 
 ### `get_table_structure(productId) -> TableStructure`
 
-Wraps `getCubeMetadata` (and `getCodeSets` where needed). Returns the table's dimensions and their top-level members, plus the scalar factor and unit of measure — everything needed to know what can be asked of this table before resolving specific member phrases.
+Wraps `getCubeMetadata` (and `getCodeSets` where needed). Returns the table's dimensions and their top-level members and frequency — everything needed to know what can be asked of this table before resolving specific member phrases.
+
+Note: `default_scalar_factor` is a best-effort placeholder (`"units"`), not a reliable value — WDS only exposes scalar factor **per-series** (via `getSeriesInfoFromCubePidCoord`), not per-table. `get_cube_metadata`'s response has no table-level scalar factor field at all. `get_data` applies the real, per-series scalar factor when it actually fetches data; nothing should rely on this field to predict or double-check that.
 
 ```json
 TableStructure {
