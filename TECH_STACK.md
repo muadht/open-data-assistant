@@ -20,7 +20,7 @@ This repo holds both the backend (Python) and the frontend (TypeScript) for the 
 
 ## LLM provider
 
-**Deferred.** Pydantic AI keeps this swappable by config (Claude, OpenAI, Gemini, Mistral, and others are all supported). Which one is actually used needs a short validation spike against [docs/question-catalogue-eval.xlsx](docs/question-catalogue-eval.xlsx) before launch — see the open questions in [docs/architecture-overview.md](docs/architecture-overview.md).
+**OpenAI, `gpt-5-mini`** (via Pydantic AI's model-agnostic config — Claude, Gemini, Mistral, and others remain swappable without rewriting agent code). Chosen via a validation spike against [docs/question-catalogue-eval.xlsx](docs/question-catalogue-eval.xlsx): 100% answer accuracy on every row it completed, including the disambiguation and negative-case rows, but conservative about asking clarifying questions on tables with several optional sub-dimensions rather than using sensible defaults. Only one provider/model was actually compared (budget/key availability) — see [docs/llm-provider-spike.md](docs/llm-provider-spike.md) for the full results and what's still open.
 
 ## Frontend
 
