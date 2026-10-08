@@ -1,0 +1,18 @@
+{
+  "description": "getSeriesInfoFromCubePidCoord with a coordinate padded to only 5 slots instead of 10. WDS rejects this outright with HTTP 406, not a SUCCESS/FAILED item.",
+  "captured_at": "2026-10-08T00:00:00Z",
+  "source": "live",
+  "request": {
+    "method": "getSeriesInfoFromCubePidCoord",
+    "body": [
+      {
+        "productId": 14100287,
+        "coordinate": "7.7.1.1.1"
+      }
+    ]
+  },
+  "http_status": 406,
+  "body": {
+    "message": "One or more co-ordinate(s) provided is not valid"
+  }
+}

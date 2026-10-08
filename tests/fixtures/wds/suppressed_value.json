@@ -1,0 +1,42 @@
+{
+  "description": "A suppressed data point: empty value, non-zero statusCode (8 = 'too unreliable to be published', per getCodeSets). Constructed rather than captured live - finding a real one means searching across thousands of series for one WDS happens to be suppressing right now, which isn't a reliable thing to depend on for a committed fixture. Shape matches the real statusCode/value behavior documented in WDS_API_FLOW.md and observed in the status/symbol code tables in code_sets.json.",
+  "captured_at": "2026-10-08T00:00:00Z",
+  "source": "constructed",
+  "request": {
+    "method": "getDataFromVectorsAndLatestNPeriods",
+    "body": [
+      {
+        "vectorId": 999999999,
+        "latestN": 1
+      }
+    ]
+  },
+  "http_status": 200,
+  "body": [
+    {
+      "status": "SUCCESS",
+      "object": {
+        "responseStatusCode": 0,
+        "productId": 13100778,
+        "coordinate": "1.1.1.1.0.0.0.0.0.0",
+        "vectorId": 999999999,
+        "vectorDataPoint": [
+          {
+            "refPer": "2026-06-01",
+            "refPer2": "",
+            "refPerRaw": "2026-06-01",
+            "refPerRaw2": "",
+            "value": "",
+            "decimals": 0,
+            "scalarFactorCode": 0,
+            "symbolCode": 0,
+            "statusCode": 8,
+            "securityLevelCode": 0,
+            "releaseTime": "2026-08-15T08:30",
+            "frequencyCode": 6
+          }
+        ]
+      }
+    }
+  ]
+}

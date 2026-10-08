@@ -1,0 +1,42 @@
+{
+  "description": "Ontario unemployment rate, latest period - a normal, healthy getDataFromVectorsAndLatestNPeriods response.",
+  "captured_at": "2026-10-08T00:00:00Z",
+  "source": "live",
+  "request": {
+    "method": "getDataFromVectorsAndLatestNPeriods",
+    "body": [
+      {
+        "vectorId": 2063949,
+        "latestN": 1
+      }
+    ]
+  },
+  "http_status": 200,
+  "body": [
+    {
+      "status": "SUCCESS",
+      "object": {
+        "responseStatusCode": 0,
+        "productId": 14100287,
+        "coordinate": "7.7.1.1.1.1.0.0.0.0",
+        "vectorId": 2063949,
+        "vectorDataPoint": [
+          {
+            "refPer": "2026-08-01",
+            "refPer2": "",
+            "refPerRaw": "2026-08-01",
+            "refPerRaw2": "",
+            "value": 6.9,
+            "decimals": 1,
+            "scalarFactorCode": 0,
+            "symbolCode": 0,
+            "statusCode": 0,
+            "securityLevelCode": 0,
+            "releaseTime": "2026-09-04T08:30",
+            "frequencyCode": 6
+          }
+        ]
+      }
+    }
+  ]
+}
