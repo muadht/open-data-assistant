@@ -63,7 +63,14 @@ class TableStructure(BaseModel):
     product_id: int
     title_en: str
     dimensions: list[DimensionInfo]
-    default_scalar_factor: str = Field(description="e.g. 'units', 'thousands', 'millions'.")
+    default_scalar_factor: str = Field(
+        description=(
+            "A best-effort placeholder (usually 'units'), not a reliable per-table value - "
+            "WDS only exposes scalar factor per-series, not per-table. get_data applies the "
+            "real scalar factor for the specific series fetched; don't use this field to "
+            "predict or double-check that."
+        )
+    )
     frequency: str
     is_census_table: bool = Field(
         description=(
