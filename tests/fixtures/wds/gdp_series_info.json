@@ -1,0 +1,33 @@
+{
+  "description": "getSeriesInfoFromCubePidCoord for Canada's GDP (expenditure-based, quarterly), productId 36100104, coordinate 1.2.1.30.0.0.0.0.0.0 - the real multi-scalar case from question-catalogue-eval.xlsx row 9. scalarFactorCode 6 = millions (confirmed against code_sets.json); memberUomCode 81 = Dollars. The raw data value this resolves to (3437720) is NOT the answer in dollars - get_data must multiply by 10^6.",
+  "captured_at": "2026-10-08T00:00:00Z",
+  "source": "live",
+  "request": {
+    "method": "getSeriesInfoFromCubePidCoord",
+    "body": [
+      {
+        "productId": 36100104,
+        "coordinate": "1.2.1.30.0.0.0.0.0.0"
+      }
+    ]
+  },
+  "http_status": 200,
+  "body": [
+    {
+      "status": "SUCCESS",
+      "object": {
+        "responseStatusCode": 0,
+        "productId": 36100104,
+        "coordinate": "1.2.1.30.0.0.0.0.0.0",
+        "vectorId": 62305783,
+        "frequencyCode": 9,
+        "scalarFactorCode": 6,
+        "decimals": 0,
+        "terminated": 0,
+        "SeriesTitleEn": "Canada;Current prices;Seasonally adjusted at annual rates;Gross domestic product at market prices",
+        "SeriesTitleFr": "Canada;Aux prix courants;Désaisonnalisées au taux annuel;Produit intérieur brut aux prix du marché",
+        "memberUomCode": 81
+      }
+    }
+  ]
+}

@@ -90,24 +90,26 @@ One shape, shared by chat answers, charts, and exports — all three are rendere
 ```json
 DataResult {
   "product_id": 14100287,
-  "title_en": "Labour force characteristics by province, monthly, seasonally adjusted",
-  "coordinate": "1.35.1.0.0.0.0.0.0.0",
-  "vector_id": 2062815,
+  "title_en": "Labour force characteristics, monthly, seasonally adjusted and trend-cycle",
+  "coordinate": "7.7.1.1.1.1.0.0.0.0",
+  "vector_id": 2063949,
   "series": [
     {
-      "ref_per": "2025-08-01",
-      "value": 6.1,
+      "ref_per": "2026-08-01",
+      "value": 6.9,
       "uom": "Percent",
       "scalar_factor_applied": true,
       "status": "normal",
       "symbol": null,
-      "security_level": "Unclassified"
+      "security_level": "public"
     }
   ],
   "source_url": "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410028701",
-  "retrieved_at": "2026-10-07T12:00:00Z"
+  "retrieved_at": "2026-10-08T12:00:00Z"
 }
 ```
+
+This example is the real, live-verified Ontario unemployment series (question-catalogue-eval.xlsx row 1) — `title_en` is the table's `cubeTitleEn` (from `getCubeMetadata`), not the series-level title; `security_level` is `getCodeSets`'s real `securityLevelDescEn` for code 0 (`"public"`, not `"Unclassified"` — an earlier, unverified draft of this doc had that wrong).
 
 - `series` is always an array, even for a single-point "latest value" answer — keeps charts, exports, and multi-period answers on one code path.
 - A suppressed value appears as a `series` entry with `value: null` and `status` explaining why, rather than being dropped — the frontend and chat layer decide how to render a gap, but they always know it's there.

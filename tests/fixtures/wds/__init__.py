@@ -18,15 +18,23 @@ _FIXTURES_DIR = Path(__file__).parent
 
 FIXTURE_NAMES = (
     "normal_data_point",
+    "normal_series_info",
     "census_series_info",
     "census_data_point",
     "nonexistent_coordinate",
     "malformed_coordinate_406",
     "vector_zero_406",
     "suppressed_value",
+    "suppressed_series_info",
     "maintenance_window_409",
     "cube_metadata",
     "code_sets",
+    "range_data_point",
+    "gdp_series_info",
+    "gdp_data_point",
+    "census_cube_metadata",
+    "gdp_cube_metadata",
+    "suppressed_cube_metadata",
 )
 
 

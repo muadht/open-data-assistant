@@ -1,0 +1,28 @@
+{
+  "description": "getCubeMetadata for product 36100104 (Gross domestic product, expenditure-based, Canada, quarterly) - trimmed to the table-level fields get_data actually reads (cubeTitleEn, for DataResult.title_en). The full dimension/member arrays are real but large and already covered by other fixtures (cube_metadata.json for 14100287); omitted here as noise for this fixture's purpose. captured_at reflects when the live cubeTitleEn was verified.",
+  "captured_at": "2026-10-08T00:00:00Z",
+  "source": "live",
+  "request": {
+    "method": "getCubeMetadata",
+    "body": [
+      {
+        "productId": 36100104
+      }
+    ]
+  },
+  "http_status": 200,
+  "body": [
+    {
+      "status": "SUCCESS",
+      "object": {
+        "productId": "36100104",
+        "cubeTitleEn": "Gross domestic product, expenditure-based, Canada, quarterly",
+        "cubeTitleFr": "Produit int\u00e9rieur brut, en termes de d\u00e9penses, Canada, trimestriel",
+        "cubeStartDate": "1961-01-01",
+        "cubeEndDate": "2026-04-01",
+        "frequencyCode": 9,
+        "archiveStatusCode": "2"
+      }
+    }
+  ]
+}
