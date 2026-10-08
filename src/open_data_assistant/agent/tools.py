@@ -4,11 +4,24 @@ Each wrapper takes a `RunContext[AgentDeps]` as its first parameter (Pydantic AI
 injection) and otherwise mirrors the underlying tool function's signature exactly, using the
 Pydantic models from `mcp/schemas.py` directly so Pydantic AI derives the tool's JSON Schema
 from them - no hand-written schema.
+
+get_table_structure, find_members, and get_data each raise a plain ValueError for a
+business-rule failure (an unresolvable coordinate, a dimension that doesn't exist on the
+table, a range query against a vectorless series, ...) - a mistake in the *arguments*, not a
+WDS/transport failure. Pydantic AI only auto-retries on argument-validation errors; a ValueError
+raised from inside a tool body otherwise propagates and crashes the whole run, giving the model
+no chance to see the error and correct itself. Each wrapper here re-raises it as a ModelRetry
+instead, which Pydantic AI feeds back to the model as a retry prompt - the same mechanism
+already used for validation errors. WdsError (and its WdsMaintenanceWindow/WdsInvalidRequest
+subclasses, from wds/client.py) is deliberately NOT caught here: those represent a WDS/transport
+problem, not a model mistake, so retrying with different arguments wouldn't help.
 """
 
 from __future__ import annotations
 
-from pydantic_ai import RunContext
+from collections.abc import Callable
+
+from pydantic_ai import ModelRetry, RunContext
 
 from ..mcp.schemas import DataResult, MemberCandidate, Period, TableCandidate, TableSearchFilters
 from ..mcp.schemas import TableStructure as TableStructureModel
@@ -17,6 +30,13 @@ from ..mcp.tools.get_data import get_data as _get_data
 from ..mcp.tools.get_table_structure import get_table_structure as _get_table_structure
 from ..mcp.tools.search_tables import search_tables as _search_tables
 from .deps import AgentDeps
+
+
+def _retry_on_value_error[T](call: Callable[[], T]) -> T:
+    try:
+        return call()
+    except ValueError as exc:
+        raise ModelRetry(str(exc)) from exc
 
 
 def search_tables(
@@ -38,7 +58,7 @@ def search_tables(
 def get_table_structure(ctx: RunContext[AgentDeps], product_id: int) -> TableStructureModel:
     """Get a table's dimensions, frequency, and whether it's a Census table (no vector IDs,
     no date-range queries possible)."""
-    return _get_table_structure(ctx.deps.wds_client, product_id)
+    return _retry_on_value_error(lambda: _get_table_structure(ctx.deps.wds_client, product_id))
 
 
 def find_members(
@@ -47,7 +67,9 @@ def find_members(
     """Resolve a phrase like "Ontario" or "25 to 34 years" to member IDs within one
     dimension of one table. Member meaning is table-specific - always scope this to the
     table you're actually querying."""
-    return _find_members(ctx.deps.wds_client, product_id, dimension_position_id, query)
+    return _retry_on_value_error(
+        lambda: _find_members(ctx.deps.wds_client, product_id, dimension_position_id, query)
+    )
 
 
 def get_data(
@@ -65,4 +87,6 @@ def get_data(
     This is the only tool that returns real values - never state a number in your answer
     without having called this.
     """
-    return _get_data(ctx.deps.wds_client, product_id, selections, period)
+    return _retry_on_value_error(
+        lambda: _get_data(ctx.deps.wds_client, product_id, selections, period)
+    )
