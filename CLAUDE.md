@@ -45,12 +45,24 @@ src/open_data_assistant/
                       # tool contract, not just documentation of it. Mirrors
                       # docs/mcp-tools-and-data-contract.md; keep both in sync.
     tools/
-      search_tables.py  # The search_tables MCP tool (ticket #7) - uses search/hybrid.py.
+      search_tables.py        # ticket #7 - uses search/hybrid.py.
+      get_table_structure.py  # ticket #3.
+      find_members.py         # ticket #4.
+      get_data.py              # ticket #5 - the only tool that fetches actual data.
+  wds/
+    client.py          # General-purpose WDS client for the 4 MCP tools (tickets #1/#2) -
+                        # retries, rate-limits, and the WdsMaintenanceWindow/WdsInvalidRequest
+                        # exceptions. Not the same client as catalogue/wds_client.py.
+  agent/
+    deps.py            # AgentDeps - the WDS/search clients, injected via RunContext.
+    tools.py           # Agent-facing wrappers around the 4 MCP tool functions.
+    system_prompt.py    # Trust/accuracy rules from docs/mvp-scope.md, as agent instructions.
+    agent.py             # build_agent(model) -> Agent. Model is left unset here - see #9.
 tests/              # mirrors the src/ layout above
 docs/                  # planning documents - read these, don't duplicate their content here
 ```
 
-As the remaining MCP tools and the orchestration service get built, they go under `src/open_data_assistant/` as sibling packages (e.g. `agent/`, `api/`), not inside `mcp/` or `search/`.
+As the orchestration service gets built (the FastAPI layer, ticket #11), it goes under `src/open_data_assistant/` as a sibling package (e.g. `api/`), not inside `agent/` or `mcp/`.
 
 Running `build-catalogue`/`ingest-opensearch` for real needs a running OpenSearch instance (not set up in this repo yet - deliberately holding off on Docker until there's a backend to containerize alongside it) and will download the `sentence-transformers/all-MiniLM-L6-v2` model on first use.
 
