@@ -9,6 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
+# Local secrets (API keys, etc.) - never committed
+.env
+
 # Ingested data dumps (e.g. data/catalogue.json, from `uv run build-catalogue`)
 /data/
 
