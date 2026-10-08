@@ -15,7 +15,7 @@ This project uses **GitHub Flow**. `main` is always in a working, mergeable stat
    ```
 5. Get it reviewed (even a quick self-review counts if no one else is free) and merge. Delete the branch afterward.
 
-See [docs/architecture-overview.md](docs/architecture-overview.md) and [docs/mcp-tools-and-data-contract.md](docs/mcp-tools-and-data-contract.md) for the design this project is built against, and [tickets/](tickets/) / the repo's [Issues](../../issues) for what's left to build.
+See [docs/architecture-overview.md](docs/architecture-overview.md) and [docs/mcp-tools-and-data-contract.md](docs/mcp-tools-and-data-contract.md) for the design this project is built against, and the repo's [Issues](../../issues) for what's left to build.
 
 ## This applies equally to AI coding agents
 
