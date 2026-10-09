@@ -49,6 +49,8 @@ src/open_data_assistant/
       get_table_structure.py  # ticket #3.
       find_members.py         # ticket #4.
       get_data.py              # ticket #5 - the only tool that fetches actual data.
+    server.py          # ticket #28 - stdio MCP server over the same 4 tools, for dev testing
+                        # from VS Code etc. (`uv run mcp-server`). Not used by the agent.
   wds/
     client.py          # General-purpose WDS client for the 4 MCP tools (tickets #1/#2) -
                         # retries, rate-limits, and the WdsMaintenanceWindow/WdsInvalidRequest

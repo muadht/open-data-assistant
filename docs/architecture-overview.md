@@ -10,12 +10,16 @@ flowchart LR
         FE["Chat frontend<br/>(Vite + React, shadcn/ui + prompt-kit)<br/>UI only, no agent logic, no API keys"]
     end
 
+    DEV["Dev MCP clients<br/>VS Code agent / MCP Inspector"]
+
     subgraph Orchestration["Orchestration service — one deployable (FastAPI)"]
         AGENT["Agent loop<br/>(Pydantic AI)<br/>conversation state, system prompt,<br/>logging, guardrails"]
         EXPORT["Export endpoints<br/>CSV / Excel / JSON"]
     end
 
-    subgraph MCP["MCP server — tools (in-process for MVP)"]
+    MCPSRV["MCP server (stdio)<br/>dev/testing only, not deployed"]
+
+    subgraph TOOLS["Tools — the MCP tool contract (Python, in-process)"]
         T1["search_tables"]
         T2["get_table_structure"]
         T3["find_members"]
@@ -23,7 +27,7 @@ flowchart LR
     end
 
     IDX[("Catalogue index<br/>OpenSearch: BM25 + kNN (RRF)")]
-    CAT["Catalogue build job<br/>build-catalogue (DataDiscovery repo)<br/>no incremental refresh yet"]
+    CAT["Catalogue build job<br/>build-catalogue<br/>no incremental refresh yet"]
     WDS[("StatCan WDS API<br/>external, rate-limited")]
     LLM{{"LLM provider<br/>model-agnostic (Pydantic AI)"}}
 
@@ -31,16 +35,20 @@ flowchart LR
     FE -->|"HTTP: export request"| EXPORT
     EXPORT -.->|"reuses the DataResult<br/>from the chat answer"| AGENT
     AGENT <-->|"messages + tool-call loop"| LLM
-    AGENT --> T1 & T2 & T3 & T4
+    AGENT -->|"direct function calls"| T1 & T2 & T3 & T4
+    DEV -.->|"MCP over stdio"| MCPSRV
+    MCPSRV -.-> T1 & T2 & T3 & T4
     T1 -->|"search"| IDX
     CAT -->|"populates / rebuilds"| IDX
     T2 & T3 & T4 -->|"live calls"| WDS
 
     classDef ext fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef dev stroke-dasharray: 5 5
     class WDS,LLM ext
+    class DEV,MCPSRV dev
 ```
 
-External systems (amber) are outside this team's control: the StatCan WDS API and the LLM provider. Everything else is built and deployed by this project.
+External systems (amber) are outside this team's control: the StatCan WDS API and the LLM provider. Dashed boxes are development tooling, not part of the deployed product. Everything else is built and deployed by this project.
 
 ## Components, one paragraph each
 
@@ -48,13 +56,13 @@ External systems (amber) are outside this team's control: the StatCan WDS API an
 
 **Orchestration service (FastAPI + Pydantic AI agent).** The one deployable unit for the MVP. FastAPI provides the HTTP/streaming surface the frontend talks to, holds conversation state across requests (HTTP itself is stateless), and hosts the export endpoints and logging/guardrail middleware. Pydantic AI runs the actual agent loop inside that process: it sends the conversation and tool list to the LLM, executes whatever tools the LLM calls, validates tool-call arguments against the same Pydantic schemas that define the MCP tool contract, feeds results back, and repeats until there's an answer to stream out.
 
-**MCP server (tools).** Implements the four tools from the [data contract](mcp-tools-and-data-contract.md): `search_tables`, `get_table_structure`, `find_members`, `get_data`. Runs in-process with the orchestration service for the MVP (see Key Decisions) but is a standard MCP server, so it can be split into its own process later without changing its interface. This is the only place that builds a StatCan coordinate or decides between a vector-based and coordinate-based fetch — the LLM never does this itself.
+**Tools (the MCP tool contract).** The four tools from the [data contract](mcp-tools-and-data-contract.md): `search_tables`, `get_table_structure`, `find_members`, `get_data` — plain Python functions in `src/open_data_assistant/mcp/tools/`, typed by the Pydantic schemas in `mcp/schemas.py`. The agent calls them in-process as ordinary function calls for the MVP (see Key Decisions). Separately, a thin stdio MCP server (`uv run mcp-server`, `mcp/server.py`) wraps the same functions so they can be called directly from an MCP client such as VS Code's agent mode during development; it isn't deployed, and it's the natural starting point if the tools are ever split into their own service. This is the only place that builds a StatCan coordinate or decides between a vector-based and coordinate-based fetch — the LLM never does this itself.
 
-**Catalogue index (OpenSearch).** Backs `search_tables`. Holds the denormalized product catalogue — bilingual titles, subjects, near-root dimension members, coverage dates, frequency — ranked by a BM25 + kNN hybrid fused with reciprocal rank fusion. This already exists and is populated (see the DataDiscovery repo); what's missing for MVP is moving the hybrid search function out of its current disposable Streamlit tool into something the MCP server can call directly.
+**Catalogue index (OpenSearch).** Backs `search_tables`. Holds the denormalized product catalogue — bilingual titles, subjects, near-root dimension members, coverage dates, frequency — ranked by a BM25 + kNN hybrid fused with reciprocal rank fusion. This already exists and is populated (see the DataDiscovery repo).
 
 **Catalogue build job.** Populates and rebuilds the OpenSearch index from WDS's `getAllCubesList` plus a chunked `getCubeMetadata` enrichment pass. Currently a manual, full rebuild (`build-catalogue`) — there is no incremental daily refresh yet (`getChangedCubeList` is docs-only, unimplemented). Whether that's needed for MVP or can wait is an open item.
 
-**StatCan WDS API.** The external system of record for all data. Rate-limited (25 req/sec per IP, 50 req/sec server-wide), has a maintenance window (HTTP 409 between midnight and 8:30 AM ET), and the quirks documented in the data contract. Only the MCP server's tools call it.
+**StatCan WDS API.** The external system of record for all data. Rate-limited (25 req/sec per IP, 50 req/sec server-wide), has a maintenance window (HTTP 409 between midnight and 8:30 AM ET), and the quirks documented in the data contract. Only the tools call it.
 
 **LLM provider.** External, and deliberately not hard-coded into the orchestration service — Pydantic AI's model abstraction keeps this swappable by config rather than by rewriting agent code. OpenAI's `gpt-5-mini` is the chosen starting model (see Key Decisions and [docs/llm-provider-spike.md](llm-provider-spike.md)) — validated for answer accuracy and the catalogue's harder cases, though only one provider was actually compared and retrieval accuracy (`search_tables`) wasn't exercised, both tracked as follow-up there.
 
