@@ -27,7 +27,7 @@ cp .env.example .env   # then set OPENAI_API_KEY
 uv run api             # http://localhost:8010
 ```
 
-It needs OpenSearch running with the catalogue index built (see "Building the catalogue index" below) and makes live calls to StatCan's WDS. The model defaults to `openai:gpt-5-mini`; set `OPEN_DATA_ASSISTANT_MODEL` to change it. Sessions live in memory, so restarting the API starts every conversation fresh.
+It needs OpenSearch running with the catalogue index built (see "Building the catalogue index" below) and makes live calls to StatCan's WDS. The model defaults to `openai:gpt-5-mini`; set `OPEN_DATA_ASSISTANT_MODEL` to change it, and `OPEN_DATA_ASSISTANT_THINKING` (`default`, `minimal`, `low`, `medium`, `high`) for how much it reasons - see `.env.example` for the trade-off measured in #89. Sessions live in memory, so restarting the API starts every conversation fresh.
 
 ## Frontend
 

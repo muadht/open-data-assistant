@@ -128,8 +128,11 @@ def tool_label(tool_name: str, args: dict[str, Any]) -> str:
         return f'Finding "{query}"' if query else "Finding the right categories"
     if tool_name == "get_data":
         selections = args.get("selections") or {}
-        listed = [v for v in selections.values() if isinstance(v, list)]
-        count = len(listed[0]) if listed else 1
+        # Every combination of the listed members is a series (#88), e.g. 11 provinces x 2.
+        count = 1
+        for members in selections.values():
+            if isinstance(members, list):
+                count *= len(set(members))
         return f"Fetching data for {count} series" if count > 1 else "Fetching data"
     return f"Running {tool_name}"
 

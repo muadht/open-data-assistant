@@ -331,6 +331,11 @@ def test_idle_sessions_expire() -> None:
         ("get_table_structure", {"product_id": 1}, "Reading the table's structure"),
         ("find_members", {"query": "Ontario"}, 'Finding "Ontario"'),
         ("get_data", {"selections": {"1": [14, 23], "2": 2}}, "Fetching data for 2 series"),
+        (
+            "get_data",
+            {"selections": {"1": [2, 3, 4], "2": 7, "3": [2, 3]}},
+            "Fetching data for 6 series",
+        ),
         ("get_data", {"selections": {"1": 14}}, "Fetching data"),
     ],
 )

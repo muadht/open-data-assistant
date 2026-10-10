@@ -14,6 +14,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic_ai import Agent
+from pydantic_ai.settings import ThinkingLevel
 from pydantic_ai.usage import UsageLimits
 
 from ..agent.agent import DEFAULT_RUN_TIMEOUT_SECONDS, DEFAULT_USAGE_LIMITS, build_agent
@@ -30,6 +31,27 @@ from .tables import router as tables_router
 logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "openai:gpt-5-mini"
+
+# How much the model reasons before each response (#89); see thinking_from_env.
+_THINKING_LEVELS: dict[str, ThinkingLevel | None] = {
+    "default": None,
+    "minimal": "minimal",
+    "low": "low",
+    "medium": "medium",
+    "high": "high",
+}
+DEFAULT_THINKING = "default"
+
+
+def thinking_from_env(value: str | None) -> ThinkingLevel | None:
+    """OPEN_DATA_ASSISTANT_THINKING: "default" (the provider's own), or minimal, low, medium,
+    high. An unknown value stops startup rather than being silently ignored."""
+    key = (value or DEFAULT_THINKING).strip().lower()
+    if key not in _THINKING_LEVELS:
+        raise ValueError(
+            f"OPEN_DATA_ASSISTANT_THINKING={value!r} isn't one of {', '.join(_THINKING_LEVELS)}"
+        )
+    return _THINKING_LEVELS[key]
 
 
 def create_app(
@@ -104,11 +126,13 @@ def create_app(
 
 
 def build_app() -> FastAPI:
-    """The real app: model from OPEN_DATA_ASSISTANT_MODEL (default gpt-5-mini), the
-    provider's API key (e.g. OPENAI_API_KEY) and OpenSearch settings from env / `.env`."""
+    """The real app: model from OPEN_DATA_ASSISTANT_MODEL (default gpt-5-mini), its
+    reasoning from OPEN_DATA_ASSISTANT_THINKING, the provider's API key (e.g. OPENAI_API_KEY)
+    and OpenSearch settings from env / `.env`."""
     load_dotenv()
     model = os.environ.get("OPEN_DATA_ASSISTANT_MODEL", DEFAULT_MODEL)
-    logger.info("Using model %s", model)
+    thinking = thinking_from_env(os.environ.get("OPEN_DATA_ASSISTANT_THINKING"))
+    logger.info("Using model %s, thinking %s", model, thinking or "provider default")
 
     def make_deps() -> AgentDeps:
         opensearch = OpenSearchConfig.from_env()
@@ -127,4 +151,4 @@ def build_app() -> FastAPI:
             embedder=SentenceTransformerEmbedder(EmbeddingConfig.from_env()),
         )
 
-    return create_app(build_agent(model), make_deps)
+    return create_app(build_agent(model, thinking=thinking), make_deps)
