@@ -71,9 +71,8 @@ describe('App with mock streams', () => {
       screen.getByRole('link', { name: 'Source 2: Ontario, 2026-08' }),
     ).toBeTruthy()
 
-    // Sources collapse to one line; expanded, a numbered list named by what differs, with
-    // the shared members and StatCan's notes once per table.
-    expect(screen.getByText('2 sources')).toBeTruthy()
+    // Sources are always shown: a numbered list named by what differs, with the shared
+    // members and StatCan's notes once per table.
     const sources = screen.getByRole('region', { name: 'Sources' })
     expect(within(sources).getByText('All series: All-items')).toBeTruthy()
     expect(

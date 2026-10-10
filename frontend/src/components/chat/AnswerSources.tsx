@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronRight, ExternalLink } from 'lucide-react'
+import { AlertTriangle, ExternalLink } from 'lucide-react'
 import {
   formatPeriods,
   type CitedSource,
@@ -56,28 +56,27 @@ function SourceSummary({ source }: { source: CitedSource }) {
   )
 }
 
-/** All of an answer's sources as one quiet line, expanding to a numbered list grouped by
- * table. Quality flags show on the collapsed line too, so they're never hidden (trust rule
- * 3). */
+/** All of an answer's sources, always visible: a numbered list grouped by table, with the
+ * shared members and StatCan's notes once per table. A flag count in the heading makes
+ * flagged sources stand out (trust rule 3). */
 export function AnswerSources({ citations }: { citations: Citations }) {
   const { sources, groups, flaggedCount } = citations
   if (!sources.length) return null
   return (
-    <details className="group text-sm text-muted-foreground">
-      <summary className="flex w-fit cursor-pointer list-none items-center gap-1 hover:text-foreground">
-        <ChevronRight
-          className="size-4 transition-transform group-open:rotate-90"
-          aria-hidden
-        />
-        {sources.length} {sources.length === 1 ? 'source' : 'sources'}
+    <section
+      aria-label="Sources"
+      className="space-y-2 text-sm text-muted-foreground"
+    >
+      <h3 className="flex items-center gap-2 text-xs font-medium tracking-wide uppercase">
+        Sources
         {flaggedCount > 0 && (
-          <span className="ml-1 inline-flex items-center gap-1 text-amber-700 dark:text-amber-400">
+          <span className="inline-flex items-center gap-1 font-normal tracking-normal text-amber-700 normal-case dark:text-amber-400">
             <AlertTriangle className="size-3.5" aria-hidden />
             {flaggedCount} flagged
           </span>
         )}
-      </summary>
-      <div aria-label="Sources" role="region" className="mt-2 space-y-3 pl-5">
+      </h3>
+      <div className="space-y-3">
         {groups.map((group) => (
           <div key={group.table.productId} className="space-y-1">
             <a
@@ -137,7 +136,7 @@ export function AnswerSources({ citations }: { citations: Citations }) {
           </div>
         ))}
       </div>
-    </details>
+    </section>
   )
 }
 
