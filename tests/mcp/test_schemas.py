@@ -38,11 +38,21 @@ def test_table_structure_census_table() -> None:
         product_id=98100001,
         title_en="Population and dwelling counts: Canada, provinces and territories",
         dimensions=[
-            DimensionInfo(dimension_position_id=1, name_en="Geographic name", has_uom=False),
+            DimensionInfo(
+                dimension_position_id=1,
+                name_en="Geographic name",
+                has_uom=False,
+                members=[MemberCandidate(member_id=7, name_en="Ontario", terminated=False)],
+                member_count=14,
+            ),
             DimensionInfo(
                 dimension_position_id=2,
                 name_en="Population and dwelling counts (11)",
                 has_uom=False,
+                members=[
+                    MemberCandidate(member_id=1, name_en="Population, 2021", terminated=False)
+                ],
+                member_count=11,
             ),
         ],
         default_scalar_factor="units",

@@ -45,14 +45,31 @@ TableStructure {
   "product_id": 14100287,
   "title_en": "...",
   "dimensions": [
-    { "dimension_position_id": 1, "name_en": "Geography", "has_uom": false },
-    { "dimension_position_id": 2, "name_en": "Labour force characteristics", "has_uom": false }
+    {
+      "dimension_position_id": 1, "name_en": "Geography", "has_uom": false,
+      "members": [
+        { "member_id": 1, "name_en": "Canada", "parent_member_id": null, "terminated": false },
+        { "member_id": 7, "name_en": "Ontario", "parent_member_id": 1, "terminated": false }
+      ],
+      "member_count": 11
+    },
+    {
+      "dimension_position_id": 3, "name_en": "Gender", "has_uom": false,
+      "members": [
+        { "member_id": 1, "name_en": "Total - Gender", "parent_member_id": null, "terminated": false },
+        { "member_id": 2, "name_en": "Men+", "parent_member_id": 1, "terminated": false },
+        { "member_id": 3, "name_en": "Women+", "parent_member_id": 1, "terminated": false }
+      ],
+      "member_count": 3
+    }
   ],
   "default_scalar_factor": "units",
   "frequency": "Monthly",
   "is_census_table": false
 }
 ```
+
+Each dimension lists up to 30 `members`, top-level first (totals and headline categories, then their children), plus the full `member_count`. That's every member for most dimensions, so the model can pick each `member_id` for `get_data` straight from here rather than guessing names one `find_members` call at a time. When `member_count` is larger than the list (e.g. thousands of Census geographies), it uses `find_members` for the rest. No extra WDS call: `getCubeMetadata` already returns every member (#61).
 
 `is_census_table` is derived from the productId prefix (`9810...`) and flags that this table has no vector IDs — only coordinate-based fetches apply.
 

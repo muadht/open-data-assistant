@@ -23,6 +23,20 @@ class DateRange(BaseModel):
     end: str = Field(description="Most recent reference period the table covers, YYYY-MM-DD.")
 
 
+class MemberCandidate(BaseModel):
+    """One member of a dimension - returned by get_table_structure and find_members."""
+
+    member_id: int
+    name_en: str
+    parent_member_id: int | None = Field(
+        default=None,
+        description=(
+            "The member this one sits under (e.g. a province under Canada); None at the top."
+        ),
+    )
+    terminated: bool = Field(description="True if this member is no longer in use.")
+
+
 # ------------------------------------------------------------------------------- search_tables
 
 
@@ -57,6 +71,15 @@ class DimensionInfo(BaseModel):
     )
     name_en: str
     has_uom: bool = Field(description="True if this dimension itself carries the unit of measure.")
+    members: list[MemberCandidate] = Field(
+        description=(
+            "This dimension's members, top-level first (usually the totals and headline "
+            "categories, e.g. 'Canada', 'Total - Gender', 'All-items'). Pick member_ids for "
+            "get_data straight from here. If member_count is larger than this list, it's "
+            "truncated - use find_members to search the rest."
+        )
+    )
+    member_count: int = Field(description="Total members in this dimension.")
 
 
 class TableStructure(BaseModel):
@@ -78,16 +101,6 @@ class TableStructure(BaseModel):
             "coordinate-based fetches work, and date-range queries are not possible."
         )
     )
-
-
-# -------------------------------------------------------------------------------- find_members
-
-
-class MemberCandidate(BaseModel):
-    member_id: int
-    name_en: str
-    parent_member_id: int | None = None
-    terminated: bool = Field(description="True if this member is no longer in use.")
 
 
 # ------------------------------------------------------------------------------------ get_data
