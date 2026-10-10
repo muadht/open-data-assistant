@@ -12,6 +12,7 @@ from mcp.types import CallToolResult, TextContent
 from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
 from pytest_httpx import HTTPXMock
 
+from open_data_assistant.agent.system_prompt import SYSTEM_PROMPT
 from open_data_assistant.mcp.server import build_server
 from open_data_assistant.search.hybrid import SearchClient
 from open_data_assistant.wds.client import BASE_URL, WdsClient
@@ -65,6 +66,19 @@ def test_exposes_the_four_tools_with_their_contract_parameters() -> None:
         "find_members": ["dimension_position_id", "product_id", "query"],
         "get_data": ["period", "product_id", "selections"],
     }
+
+
+def test_sends_the_agent_system_prompt_as_server_instructions() -> None:
+    with WdsClient() as wds_client:
+        server = build_server(
+            wds_client, FakeOpenSearchClient([]), "statcan-products", FakeEmbedder()
+        )
+
+        async def run() -> str | None:
+            async with Client(server) as client:
+                return client.instructions
+
+        assert asyncio.run(run()) == SYSTEM_PROMPT
 
 
 def test_successful_call_returns_structured_tool_output(httpx_mock: HTTPXMock) -> None:

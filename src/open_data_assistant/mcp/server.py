@@ -3,7 +3,8 @@
 
 This is a second thin wrapper over the same functions in `mcp/tools/`, alongside the
 in-process one in `agent/tools.py`. The production agent does not go through this server.
-Tool descriptions are taken from the agent's wrappers so both expose identical LLM-facing text.
+Tool descriptions are taken from the agent's wrappers, and the agent's system prompt is sent as
+the server's MCP instructions, so both expose identical LLM-facing text.
 
 `mcp` SDK v2 hides an unexpected exception's message from the client (it only reports "Error
 executing tool X"). Our ValueError (a bad argument) and WdsError (WDS unavailable/rejected) are
@@ -20,6 +21,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from opensearchpy.exceptions import ConnectionError as OpenSearchConnectionError
 
 from ..agent import tools as agent_tools
+from ..agent.system_prompt import SYSTEM_PROMPT
 from ..search.config import EmbeddingConfig, OpenSearchConfig
 from ..search.embeddings import EmbeddingProvider, SentenceTransformerEmbedder
 from ..search.hybrid import SearchClient
@@ -46,7 +48,7 @@ def build_server(
     search_index: str,
     embedder: EmbeddingProvider,
 ) -> MCPServer:
-    server = MCPServer("open-data-assistant")
+    server = MCPServer("open-data-assistant", instructions=SYSTEM_PROMPT)
 
     @server.tool(description=agent_tools.search_tables.__doc__)
     def search_tables(
