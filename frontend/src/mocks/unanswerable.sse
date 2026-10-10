@@ -1,0 +1,18 @@
+event: session
+data: {"session_id": "mock-session", "message_id": "m1"}
+
+event: tool_call
+data: {"call_id": "c1", "label": "Searching StatCan tables"}
+
+event: tool_result
+data: {"call_id": "c1", "ok": true}
+
+event: tool_call
+data: {"call_id": "c2", "label": "Reading the table's structure"}
+
+event: tool_result
+data: {"call_id": "c2", "ok": true}
+
+event: unanswerable
+data: {"message_id": "m1", "reason": "The Census is only taken every five years, so there is no quarterly population count for Ontario between 2016 and 2021.", "alternative": "I can give you Ontario's population in the 2016 and 2021 censuses, or the quarterly population estimates from a different table."}
+
