@@ -13,11 +13,17 @@ import { tableNumber } from '@/chat/tables'
 import type { ChatTransport } from '@/chat/transport'
 import { browseParamsFrom, browseSearchParams } from '@/tables/api'
 import { useHashRoute } from '@/tables/useHashRoute'
+import { SettingsProvider } from '@/settings/SettingsProvider'
 import { ROOM_FOR_BOTH, WIDE } from '@/lib/breakpoints'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/chat/useChat'
 import { AssistantReply } from '@/components/chat/AssistantReply'
+import {
+  SettingsDialog,
+  type SettingsSection,
+} from '@/components/settings/SettingsDialog'
+import { ProfileMenu } from '@/components/sidebar/ProfileMenu'
 import { Sidebar } from '@/components/sidebar/Sidebar'
 import { BrowsePane } from '@/components/tables/BrowsePane'
 import { SidePanel } from '@/components/tables/SidePanel'
@@ -85,8 +91,11 @@ export default function App({ transport }: { transport?: ChatTransport }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const panelOpen = browsing || detailTable !== null
   // Below ROOM_FOR_BOTH there's room for one side at a time: the table panel, while open,
-  // hides the sidebar (as ChatGPT's canvas does), and it comes back when the panel closes.
-  const sidebarShown = wide && sidebarOpen && (roomForBoth || !panelOpen)
+  // collapses the sidebar to its icon rail (as ChatGPT's canvas does), and it expands
+  // again when the panel closes.
+  const sidebarExpanded = wide && sidebarOpen && (roomForBoth || !panelOpen)
+  const [settingsSection, setSettingsSection] =
+    useState<SettingsSection | null>(null)
 
   const [saved, setSaved] = useState<SavedChat[]>([])
   const [chatId, setChatId] = useState<string>(() => crypto.randomUUID())
@@ -170,8 +179,18 @@ export default function App({ transport }: { transport?: ChatTransport }) {
     if (!roomForBoth) closePanel()
   }
 
-  const sidebar = (
+  const clearRecents = () => {
+    setSaved([])
+    reset()
+    setChatId(crypto.randomUUID())
+    setInput('')
+    setPinned(null)
+    setDetailTable(null)
+  }
+
+  const renderSidebar = (collapsed: boolean) => (
     <Sidebar
+      collapsed={collapsed}
       recents={recents}
       currentId={chatId}
       browsing={browsing && detailTable === null}
@@ -183,8 +202,19 @@ export default function App({ transport }: { transport?: ChatTransport }) {
         setMobileSidebarOpen(false)
         toggleBrowse()
       }}
-      onClose={() =>
-        wide ? setSidebarOpen(false) : setMobileSidebarOpen(false)
+      onToggle={() => {
+        if (!wide) setMobileSidebarOpen(false)
+        else if (sidebarExpanded) setSidebarOpen(false)
+        else openSidebar()
+      }}
+      profile={
+        <ProfileMenu
+          compact={collapsed}
+          onOpenSettings={(section) => {
+            setMobileSidebarOpen(false)
+            setSettingsSection(section)
+          }}
+        />
       }
     />
   )
@@ -260,170 +290,176 @@ export default function App({ transport }: { transport?: ChatTransport }) {
   )
 
   return (
-    <div className="flex h-dvh bg-background text-foreground">
-      {wide ? (
-        // Slides like the table panel: the width animates, so the chat moves with it.
-        <div
-          inert={!sidebarShown}
-          aria-hidden={!sidebarShown}
-          className={cn(
-            'shrink-0 overflow-hidden border-r transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none',
-            sidebarShown ? 'w-64' : 'w-0 border-r-0',
-          )}
-        >
-          {sidebar}
-        </div>
-      ) : (
-        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-          <SheetContent
-            side="left"
-            showCloseButton={false}
-            aria-describedby={undefined}
-            className="w-64 gap-0 p-0"
+    <SettingsProvider>
+      <div className="flex h-dvh bg-background text-foreground">
+        {wide ? (
+          // Slides like the table panel: the width animates, so the chat moves with it.
+          <div
+            className={cn(
+              'shrink-0 overflow-hidden border-r transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none',
+              sidebarExpanded ? 'w-64' : 'w-14',
+            )}
           >
-            <SheetTitle className="sr-only">Sidebar</SheetTitle>
-            {sidebar}
-          </SheetContent>
-        </Sheet>
-      )}
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center gap-2 px-3">
-          {!sidebarShown && (
-            <button
-              type="button"
-              onClick={openSidebar}
-              aria-label="Open sidebar"
-              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            {renderSidebar(!sidebarExpanded)}
+          </div>
+        ) : (
+          <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+            <SheetContent
+              side="left"
+              showCloseButton={false}
+              aria-describedby={undefined}
+              className="w-64 gap-0 p-0"
             >
-              <PanelLeftOpen className="size-4" />
-            </button>
-          )}
-          {/* The sidebar shows the name when it's open. */}
-          <h1 className={cn('font-semibold', sidebarShown && 'sr-only')}>
-            StatCan Data Assistant
-          </h1>
-          {!wide && (
-            <button
-              type="button"
-              onClick={newChat}
-              disabled={isStreaming || (messages.length === 0 && !pinned)}
-              aria-label="New chat"
-              className="ml-auto rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-            >
-              <SquarePen className="size-4" />
-            </button>
-          )}
-        </header>
+              <SheetTitle className="sr-only">Sidebar</SheetTitle>
+              {renderSidebar(false)}
+            </SheetContent>
+          </Sheet>
+        )}
 
-        <div className="flex min-h-0 flex-1">
-          {messages.length === 0 ? (
-            <main className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-24">
-              <div className="space-y-1 text-center">
-                <h2 className="text-2xl font-semibold">
-                  What would you like to know?
-                </h2>
-                <p className="text-muted-foreground">
-                  Ask about Statistics Canada data in plain language. Every
-                  answer cites its source.
-                </p>
-              </div>
-              <div className="w-full max-w-3xl">{prompt}</div>
-              <div className="flex max-w-3xl flex-wrap justify-center gap-2">
-                {examples.map((example) => (
-                  <Button
-                    key={example}
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full"
-                    onClick={() => submit(example)}
-                  >
-                    {example}
-                  </Button>
-                ))}
-              </div>
-            </main>
-          ) : (
-            <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <ChatContainerRoot className="flex-1">
-                <ChatContainerContent
-                  className="mx-auto w-full max-w-3xl gap-8 px-4 py-6"
-                  role="log"
-                  aria-live="polite"
-                  aria-busy={isStreaming}
-                >
-                  {messages.map((message, index) =>
-                    message.role === 'user' ? (
-                      <Message key={message.id} className="justify-end">
-                        <MessageContent className="max-w-[85%] rounded-3xl bg-muted px-4 py-2">
-                          {message.text}
-                        </MessageContent>
-                      </Message>
-                    ) : (
-                      <AssistantReply
-                        key={message.id}
-                        message={message}
-                        active={isStreaming && index === messages.length - 1}
-                        onSend={submit}
-                        onRetry={() =>
-                          submit(previousQuestion(messages, index))
-                        }
-                        onOpenTable={openTable}
-                      />
-                    ),
-                  )}
-                </ChatContainerContent>
-              </ChatContainerRoot>
-              <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-                {prompt}
-                <p className="mt-2 text-center text-xs text-muted-foreground">
-                  Answers use Statistics Canada data only. Check the sources for
-                  each answer.
-                </p>
-              </div>
-            </main>
-          )}
-          <SidePanel
-            open={browsing || detailTable !== null}
-            label={detailTable !== null ? 'Table details' : 'Browse tables'}
-            onClose={closePanel}
-            focusKey={detailTable ?? 'browse'}
-          >
-            {browsing && (
-              // Kept mounted under a table's details, so "Back to results" returns to the
-              // same results and scroll position.
-              <div
-                hidden={detailTable !== null}
-                className="flex min-h-0 flex-1 flex-col"
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex h-12 shrink-0 items-center gap-2 px-3">
+            {!wide && (
+              <button
+                type="button"
+                onClick={openSidebar}
+                aria-label="Open sidebar"
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                <BrowsePane
-                  params={browseParamsFrom(route.search)}
-                  onParamsChange={(params) => {
-                    const search = browseSearchParams(params)
-                    setLastBrowse(search)
-                    navigate('browse', search)
-                  }}
-                  onOpenTable={(productId) => openTable(productId, true)}
+                <PanelLeftOpen className="size-4" />
+              </button>
+            )}
+            {/* The sidebar shows the name when it's expanded. */}
+            <h1 className={cn('font-semibold', sidebarExpanded && 'sr-only')}>
+              StatCan Data Assistant
+            </h1>
+            {!wide && (
+              <button
+                type="button"
+                onClick={newChat}
+                disabled={isStreaming || (messages.length === 0 && !pinned)}
+                aria-label="New chat"
+                className="ml-auto rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+              >
+                <SquarePen className="size-4" />
+              </button>
+            )}
+          </header>
+
+          <div className="flex min-h-0 flex-1">
+            {messages.length === 0 ? (
+              <main className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-24">
+                <div className="space-y-1 text-center">
+                  <h2 className="text-2xl font-semibold">
+                    What would you like to know?
+                  </h2>
+                  <p className="text-muted-foreground">
+                    Ask about Statistics Canada data in plain language. Every
+                    answer cites its source.
+                  </p>
+                </div>
+                <div className="w-full max-w-3xl">{prompt}</div>
+                <div className="flex max-w-3xl flex-wrap justify-center gap-2">
+                  {examples.map((example) => (
+                    <Button
+                      key={example}
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={() => submit(example)}
+                    >
+                      {example}
+                    </Button>
+                  ))}
+                </div>
+              </main>
+            ) : (
+              <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <ChatContainerRoot className="flex-1">
+                  <ChatContainerContent
+                    className="mx-auto w-full max-w-3xl gap-8 px-4 py-6"
+                    role="log"
+                    aria-live="polite"
+                    aria-busy={isStreaming}
+                  >
+                    {messages.map((message, index) =>
+                      message.role === 'user' ? (
+                        <Message key={message.id} className="justify-end">
+                          <MessageContent className="max-w-[85%] rounded-3xl bg-muted px-4 py-2">
+                            {message.text}
+                          </MessageContent>
+                        </Message>
+                      ) : (
+                        <AssistantReply
+                          key={message.id}
+                          message={message}
+                          active={isStreaming && index === messages.length - 1}
+                          onSend={submit}
+                          onRetry={() =>
+                            submit(previousQuestion(messages, index))
+                          }
+                          onOpenTable={openTable}
+                        />
+                      ),
+                    )}
+                  </ChatContainerContent>
+                </ChatContainerRoot>
+                <div className="mx-auto w-full max-w-3xl px-4 pb-4">
+                  {prompt}
+                  <p className="mt-2 text-center text-xs text-muted-foreground">
+                    Answers use Statistics Canada data only. Check the sources
+                    for each answer.
+                  </p>
+                </div>
+              </main>
+            )}
+            <SidePanel
+              open={browsing || detailTable !== null}
+              label={detailTable !== null ? 'Table details' : 'Browse tables'}
+              onClose={closePanel}
+              focusKey={detailTable ?? 'browse'}
+            >
+              {browsing && (
+                // Kept mounted under a table's details, so "Back to results" returns to the
+                // same results and scroll position.
+                <div
+                  hidden={detailTable !== null}
+                  className="flex min-h-0 flex-1 flex-col"
+                >
+                  <BrowsePane
+                    params={browseParamsFrom(route.search)}
+                    onParamsChange={(params) => {
+                      const search = browseSearchParams(params)
+                      setLastBrowse(search)
+                      navigate('browse', search)
+                    }}
+                    onOpenTable={(productId) => openTable(productId, true)}
+                    onClose={closePanel}
+                  />
+                </div>
+              )}
+              {detailTable !== null && (
+                <TableDetailsPane
+                  productId={detailTable}
+                  onBack={
+                    browsing && detailFromList
+                      ? () => setDetailTable(null)
+                      : undefined
+                  }
                   onClose={closePanel}
+                  onAsk={setPinned}
                 />
-              </div>
-            )}
-            {detailTable !== null && (
-              <TableDetailsPane
-                productId={detailTable}
-                onBack={
-                  browsing && detailFromList
-                    ? () => setDetailTable(null)
-                    : undefined
-                }
-                onClose={closePanel}
-                onAsk={setPinned}
-              />
-            )}
-          </SidePanel>
+              )}
+            </SidePanel>
+          </div>
         </div>
       </div>
-    </div>
+      <SettingsDialog
+        section={settingsSection}
+        onSectionChange={setSettingsSection}
+        recentCount={recents.length}
+        onClearRecents={clearRecents}
+      />
+    </SettingsProvider>
   )
 }
 

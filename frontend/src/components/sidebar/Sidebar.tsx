@@ -1,4 +1,10 @@
-import { Library, PanelLeftClose, SquarePen } from 'lucide-react'
+import {
+  Library,
+  PanelLeftClose,
+  PanelLeftOpen,
+  SquarePen,
+  type LucideIcon,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -8,6 +14,8 @@ export interface RecentChat {
 }
 
 interface Props {
+  /** Icons only (#78): collapsed, the sidebar stays as a rail rather than disappearing. */
+  collapsed: boolean
   recents: RecentChat[]
   currentId: string
   browsing: boolean
@@ -17,11 +25,14 @@ interface Props {
   onNewChat: () => void
   onOpenChat: (id: string) => void
   onBrowse: () => void
-  onClose: () => void
+  onToggle: () => void
+  /** The profile avatar and its menu, at the bottom. */
+  profile: ReactNode
 }
 
 /** The app's name and actions, then this page session's chats (#76). */
 export function Sidebar({
+  collapsed,
   recents,
   currentId,
   browsing,
@@ -30,8 +41,49 @@ export function Sidebar({
   onNewChat,
   onOpenChat,
   onBrowse,
-  onClose,
+  onToggle,
+  profile,
 }: Props) {
+  const actions = (
+    <>
+      <SidebarItem
+        icon={SquarePen}
+        label="New chat"
+        compact={collapsed}
+        onClick={onNewChat}
+        disabled={busy || !canStartNew}
+      />
+      <SidebarItem
+        icon={Library}
+        label="Browse tables"
+        compact={collapsed}
+        onClick={onBrowse}
+        pressed={browsing}
+      />
+    </>
+  )
+
+  if (collapsed) {
+    return (
+      <nav
+        aria-label="Sidebar"
+        className="flex h-full w-14 flex-col items-center gap-1 bg-sidebar py-3 text-sidebar-foreground"
+      >
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label="Open sidebar"
+          title="Open sidebar"
+          className="mb-3 rounded-md p-2 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <PanelLeftOpen className="size-4" />
+        </button>
+        {actions}
+        <div className="mt-auto">{profile}</div>
+      </nav>
+    )
+  }
+
   return (
     <nav
       aria-label="Sidebar"
@@ -41,30 +93,16 @@ export function Sidebar({
         <span className="font-semibold">StatCan Data Assistant</span>
         <button
           type="button"
-          onClick={onClose}
+          onClick={onToggle}
           aria-label="Close sidebar"
+          title="Close sidebar"
           className="rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <PanelLeftClose className="size-4" />
         </button>
       </div>
 
-      <div className="space-y-0.5 px-2">
-        <SidebarItem
-          icon={<SquarePen className="size-4" />}
-          onClick={onNewChat}
-          disabled={busy || !canStartNew}
-        >
-          New chat
-        </SidebarItem>
-        <SidebarItem
-          icon={<Library className="size-4" />}
-          onClick={onBrowse}
-          pressed={browsing}
-        >
-          Browse tables
-        </SidebarItem>
-      </div>
+      <div className="space-y-0.5 px-2">{actions}</div>
 
       <div className="mt-6 min-h-0 flex-1 overflow-y-auto px-2">
         <h2 className="px-2 pb-1 text-xs font-medium text-muted-foreground">
@@ -98,25 +136,25 @@ export function Sidebar({
         )}
       </div>
 
-      <p className="border-t px-4 py-3 text-xs text-muted-foreground">
-        Chats are kept until you reload the page.
-      </p>
+      <div className="border-t p-2">{profile}</div>
     </nav>
   )
 }
 
 function SidebarItem({
-  icon,
+  icon: Icon,
+  label,
+  compact,
   onClick,
   disabled,
   pressed,
-  children,
 }: {
-  icon: ReactNode
+  icon: LucideIcon
+  label: string
+  compact: boolean
   onClick: () => void
   disabled?: boolean
   pressed?: boolean
-  children: ReactNode
 }) {
   return (
     <button
@@ -124,13 +162,16 @@ function SidebarItem({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={pressed}
+      aria-label={compact ? label : undefined}
+      title={compact ? label : undefined}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 hover:bg-sidebar-accent disabled:opacity-50 disabled:hover:bg-transparent [&_svg]:text-muted-foreground',
+        'flex items-center gap-2.5 rounded-md hover:bg-sidebar-accent disabled:opacity-50 disabled:hover:bg-transparent',
+        compact ? 'p-2' : 'w-full px-2 py-1.5',
         pressed && 'bg-sidebar-accent text-sidebar-accent-foreground',
       )}
     >
-      {icon}
-      {children}
+      <Icon className="size-4 text-muted-foreground" aria-hidden />
+      {!compact && label}
     </button>
   )
 }
