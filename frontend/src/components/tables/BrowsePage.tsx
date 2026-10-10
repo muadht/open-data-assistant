@@ -323,7 +323,11 @@ function SubjectPicker({
   const [search, setSearch] = useState('')
   const terms = search.trim().toLowerCase()
   const matches = terms
-    ? all.filter((f) => f.value.toLowerCase().includes(terms)).slice(0, 50)
+    ? // Match each subject on its own name, not its parents': otherwise "consumer" also
+      // finds every child of "Business and consumer services and culture".
+      all
+        .filter((f) => f.value.split('/').at(-1)!.toLowerCase().includes(terms))
+        .slice(0, 50)
     : []
   return (
     <div className="space-y-1">

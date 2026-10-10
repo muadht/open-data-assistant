@@ -51,6 +51,11 @@ const SEARCH: TableSearchResponse = {
       { value: 'Prices and price indexes', count: 43 },
       { value: 'Prices and price indexes/Consumer price indexes', count: 12 },
       { value: 'Labour', count: 9 },
+      { value: 'Business and consumer services and culture', count: 186 },
+      {
+        value: 'Business and consumer services and culture/Culture',
+        count: 79,
+      },
     ],
     frequencies: [{ value: 'Monthly', count: 43 }],
     active: 43,
@@ -166,6 +171,14 @@ describe('Browse tables', () => {
     fireEvent.change(await screen.findByLabelText('Search subjects'), {
       target: { value: 'consumer' },
     })
+    // Matched on each subject's own name: "Culture" isn't a match just because its parent's
+    // name contains "consumer".
+    expect(screen.queryByRole('button', { name: /› Culture/ })).toBeNull()
+    expect(
+      screen.getByRole('button', {
+        name: /^Business and consumer services and culture\s*186/,
+      }),
+    ).toBeTruthy()
     // A second-level subject, found without drilling down from "Prices".
     fireEvent.click(
       screen.getByRole('button', {
