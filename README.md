@@ -18,6 +18,21 @@ uv run ruff check .
 uv run mypy .
 ```
 
+## Frontend
+
+The chat UI lives in `frontend/`: Vite + React + TypeScript, with shadcn/ui and prompt-kit components (see [TECH_STACK.md](TECH_STACK.md)). Needs Node 20.19+.
+
+```bash
+cd frontend
+npm install
+npm run dev           # dev server at http://localhost:5173
+npm run build         # type-check + production build
+npm run lint          # oxlint
+npm run format:check  # prettier (npm run format to fix)
+```
+
+It's a layout shell for now, not connected to the backend yet. Components under `src/components/ui/` are copied in by the shadcn CLI (`npx shadcn@latest add ...`); prompt-kit's come from its registry, e.g. `npx shadcn@latest add "https://www.prompt-kit.com/c/message.json"`.
+
 ## Building the catalogue index
 
 Needs a running OpenSearch. `docker-compose.yml` starts one locally on `localhost:9200`, which is what the defaults point at. It's dev-only (security disabled), not a deployment setup. Needs Docker running.

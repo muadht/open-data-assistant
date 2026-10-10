@@ -1,0 +1,5 @@
+dist
+node_modules
+# Copied in by the shadcn CLI (shadcn/ui and prompt-kit); left in their upstream style so
+# re-running `shadcn add` produces clean diffs.
+src/components/ui
