@@ -137,7 +137,7 @@ StatCan knowledge lives in four places, each with a clear owner:
 | Where | What | Status |
 |---|---|---|
 | System prompt (`agent/system_prompt.py`) | Trust rules, typical flow, general guidance | Decided |
-| Tool-result hints | Meaning attached to data from metadata, e.g. a `2002=100` unit means "index: compare changes, not levels", scalar factor, preliminary periods | Proposed |
+| Tool-result hints | Meaning attached to data from metadata, e.g. a `2002=100` unit means "index: compare changes, not levels", scalar factor, preliminary periods, and the footnotes that apply to the selected series (#38) | Proposed |
 | Per-table defaults | Default members for sub-dimensions the user didn't mention (e.g. seasonally adjusted, both sexes), to fix the over-asking found in the [spike](llm-provider-spike.md) | Proposed |
 | Concept-to-table map | Curated shortcuts for the most common questions (e.g. "inflation"); search covers the rest | Proposed |
 
@@ -168,9 +168,83 @@ loop or the validator. Checklist:
    without asking the model.
 3. **Default filling:** code applies per-table defaults; the model resolves only what the user
    said.
-4. **Batched fetch:** comparisons fetch all members in one call or in parallel.
 
 Each removes one model decision and makes that step testable on its own.
+
+Comparisons and "by province" questions are not on this list: they're handled by the tool
+itself, since WDS fetches several series in one batched request (#39).
+
+### Using pydantic-graph for these steps (Proposed)
+
+Once more than one or two of these steps exist, they can be organised as a small graph
+**around** the agent rather than as a growing chain of `if`s. `pydantic-graph` is the natural
+fit: it's already installed (Pydantic AI's own agent loop is built on it), and it's typed the
+same way as the rest of the code.
+
+What it offers:
+
+- **Typed edges.** A node's `run()` return type declares where it can go next (e.g.
+  `-> RunAgent | Search`). The graph is validated when built, and mypy checks the types.
+- **Shared typed state** (`ctx.state`) carrying the query state between nodes, and a typed
+  output: the same `Answer | Clarification | Unanswerable` union.
+- **Each node is testable on its own**, without an LLM.
+- **`graph.render()`** produces a Mermaid diagram from the code, so diagrams like the one
+  below can't drift from the implementation.
+
+**Example: routing in front of the agent** (steps 1 and 2). The agent loop stays as it is,
+as one node:
+
+```mermaid
+flowchart LR
+    S(["Question"]) --> Route
+    Route -->|"concept map hit"| RunAgent
+    Route -->|"no match"| Search
+    Search -->|"clear winner"| RunAgent
+    Search -->|"top scores too close"| C(["Clarification"])
+    RunAgent --> O(["Answer / Clarification /<br/>Unanswerable"])
+```
+
+```python
+Outcome = Answer | Clarification | Unanswerable
+
+
+@dataclass
+class Route(BaseNode[QueryState, AgentDeps, Outcome]):
+    async def run(self, ctx: GraphRunContext[QueryState, AgentDeps]) -> RunAgent | Search:
+        if product_id := concept_to_table(ctx.state.question):
+            ctx.state.product_id = product_id
+            return RunAgent()
+        return Search()
+
+
+@dataclass
+class Search(BaseNode[QueryState, AgentDeps, Outcome]):
+    async def run(self, ctx: GraphRunContext[QueryState, AgentDeps]) -> RunAgent | End[Outcome]:
+        candidates = search_tables(...)
+        if too_close(candidates):
+            return End(Clarification(question="Which of these did you mean?", candidates=...))
+        ctx.state.product_id = candidates[0].product_id
+        return RunAgent()
+
+
+@dataclass
+class RunAgent(BaseNode[QueryState, AgentDeps, Outcome]):
+    async def run(self, ctx: GraphRunContext[QueryState, AgentDeps]) -> End[Outcome]:
+        result = await agent.run(..., deps=ctx.deps)  # the existing tool loop, table pre-selected
+        return End(result.output)
+
+
+g = GraphBuilder(state_type=QueryState, deps_type=AgentDeps, input_type=Route, output_type=Outcome)
+g.add(g.edge_from(g.start_node).to(Route), g.node(Route), g.node(Search), g.node(RunAgent))
+router = g.build()
+```
+
+pydantic-graph also supports parallel branches (`.map()` and `join()`), but they aren't
+needed for fetching several series: one batched WDS request does that with fewer calls
+against the rate limit (#39).
+
+**When to adopt:** not before the steps above actually move into code. One or two checks
+before `agent.run()` don't need a graph.
 
 ## Evaluation and observability
 
@@ -193,6 +267,8 @@ Each removes one model decision and makes that step testable on its own.
 | Fixed pipeline (understand → find table → resolve → fetch → write) | Rigid, and we don't yet know which steps the model gets wrong. Steps move into code one at a time instead. |
 | Free-text answers checked only by the prompt | Can't guarantee citations or trace numbers to data. |
 | Long-term / cross-session memory | Out of MVP scope; needs accounts; privacy and hosting concerns. |
+| LangGraph | Its strengths (checkpointed state, mid-run interrupts) solve problems this design avoids by keeping the agent stateless; weaker typing than the Pydantic schemas; rework of `agent/tools.py`. `pydantic-graph` covers the graph use case above. |
+
 ## Open questions
 
 - Retry budget and step/time limits: set from eval data, not guessed.
