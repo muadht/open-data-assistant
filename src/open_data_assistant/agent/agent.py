@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from pydantic_ai import Agent
 from pydantic_ai.models import KnownModelName, Model
+from pydantic_ai.settings import ModelSettings, ThinkingLevel
 from pydantic_ai.usage import UsageLimits
 
 from .deps import AgentDeps
@@ -35,9 +36,15 @@ DEFAULT_RUN_TIMEOUT_SECONDS = 60.0
 _OUTPUT_RETRIES = 2
 
 
-def build_agent(model: Model | KnownModelName | str | None = None) -> Agent[AgentDeps, Outcome]:
+def build_agent(
+    model: Model | KnownModelName | str | None = None, *, thinking: ThinkingLevel | None = None
+) -> Agent[AgentDeps, Outcome]:
+    """`thinking` sets how much the model reasons before each response (#89) - Pydantic AI's
+    provider-neutral setting, e.g. OpenAI's reasoning effort. None leaves the provider's
+    default."""
     agent: Agent[AgentDeps, Outcome] = Agent(
         model,
+        model_settings=ModelSettings(thinking=thinking) if thinking is not None else None,
         deps_type=AgentDeps,
         # The list form rather than the `Outcome` alias: mypy can't match a runtime union
         # object to Agent's output_type overloads, but types the list against the annotation.

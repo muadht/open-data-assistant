@@ -27,11 +27,16 @@ const mockStreams = import.meta.glob<string>('../mocks/*.sse', {
 
 // Keyword routing so each mock can be tried from the UI; see src/mocks/README.md.
 const MOCK_ROUTES: [RegExp, string][] = [
+  // Before the comparison route: "how do men and women compare" is about sex, not CPI.
+  [/\b(men|women|sex|gender)\b/i, 'answer-sex-provinces'],
   [/compar|\bvs\.?\b|versus|alberta/i, 'answer-comparison'],
   [/inflation/i, 'clarification'],
+  // Before the unanswerable route: GDP questions often say "quarters".
+  [/\bgdp\b|gross domestic/i, 'answer-gdp'],
   [/census|quarter/i, 'unanswerable'],
   [/error|maintenance/i, 'error-wds'],
   [/population/i, 'answer-population'],
+  [/consumer price|\bcpi\b/i, 'answer-cpi'],
   [/provinc|territor|\bmap\b/i, 'answer-provinces'],
 ]
 
