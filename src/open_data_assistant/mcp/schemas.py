@@ -143,5 +143,12 @@ class DataResult(BaseModel):
         ),
     )
     series: list[DataPoint]
-    source_url: HttpUrl
+    source_url: HttpUrl = Field(description="StatCan page for the whole table.")
+    series_url: HttpUrl | None = Field(
+        default=None,
+        description=(
+            "StatCan page for this exact series (vector) - cite this alongside source_url. "
+            "None when vector_id is None (e.g. a Census table); cite source_url alone then."
+        ),
+    )
     retrieved_at: datetime

@@ -105,6 +105,7 @@ DataResult {
     }
   ],
   "source_url": "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410028701",
+  "series_url": "https://www150.statcan.gc.ca/t1/tbl1/en/sbv.action?vectorNumbers=v2063949&searchOption=2&latestN=1",
   "retrieved_at": "2026-10-08T12:00:00Z"
 }
 ```
@@ -114,6 +115,7 @@ This example is the real, live-verified Ontario unemployment series (question-ca
 - `series` is always an array, even for a single-point "latest value" answer — keeps charts, exports, and multi-period answers on one code path.
 - A suppressed value appears as a `series` entry with `value: null` and `status` explaining why, rather than being dropped — the frontend and chat layer decide how to render a gap, but they always know it's there.
 - `sourceUrl` and `retrievedAt` are mandatory on every result; this is what backs the citation and reference-period requirements in the [MVP scope](mvp-scope.md).
+- `series_url` is the series-level (vector) citation link, and is `null` whenever `vector_id` is (e.g. Census tables). For a `latestN` query it carries the same `latestN`, so the linked page shows the same periods as the answer; no date-range parameter for `sbv.action` has been verified, so for a `range` query it omits `latestN` and the page shows only the latest period (both behaviours live-verified 2026-10-09).
 
 ## Index design and refresh
 

@@ -78,8 +78,23 @@ def get_data(
         vector_id=vector_id,
         series=data_points,
         source_url=HttpUrl(f"https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid={product_id}01"),
+        series_url=_series_url(vector_id, period),
         retrieved_at=datetime.now(UTC),
     )
+
+
+def _series_url(vector_id: int | None, period: Period) -> HttpUrl | None:
+    if vector_id is None:
+        return None
+    url = (
+        "https://www150.statcan.gc.ca/t1/tbl1/en/sbv.action"
+        f"?vectorNumbers=v{vector_id}&searchOption=2"
+    )
+    # No verified date-range parameter for sbv.action; without latestN it shows just the
+    # latest period, so a range query still links to the right series.
+    if isinstance(period, LatestNPeriod):
+        url += f"&latestN={period.n}"
+    return HttpUrl(url)
 
 
 def _build_coordinate(selections: dict[int, int]) -> str:
