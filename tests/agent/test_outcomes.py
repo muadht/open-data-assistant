@@ -129,12 +129,14 @@ def test_untraceable_value_is_sent_back_then_corrected(httpx_mock: HTTPXMock) ->
     assert "7.0 for coordinate 7.7.1.1.1.1.0.0.0.0 at 2026-08-01 does not appear" in reason
 
 
-def test_missing_series_link_is_sent_back(httpx_mock: HTTPXMock) -> None:
-    unlinked = _answer("The unemployment rate in Ontario was 6.9% in August 2026.")
-    result = _run(httpx_mock, [FETCH_ONTARIO, unlinked, ONTARIO_ANSWER])
+def test_a_plain_answer_without_links_passes(httpx_mock: HTTPXMock) -> None:
+    """Sources are shown by the app from the answer's data, so the text needn't link them
+    (APP_INSTRUCTIONS); the value is still checked against fetched data."""
+    plain = _answer("The unemployment rate in Ontario was 6.9% in August 2026.")
+    result = _run(httpx_mock, [FETCH_ONTARIO, plain])
 
-    [reason] = _retry_reasons(result.all_messages())
-    assert f"must link this series: {ONTARIO_LINK}" in reason
+    assert isinstance(result.output, Answer)
+    assert _retry_reasons(result.all_messages()) == []
 
 
 def test_missing_reference_period_is_sent_back(httpx_mock: HTTPXMock) -> None:
@@ -192,9 +194,9 @@ def test_suppressed_value_must_be_named(httpx_mock: HTTPXMock) -> None:
 
 
 def test_retry_budget_exhausted_fails_visibly(httpx_mock: HTTPXMock) -> None:
-    unlinked = _answer("The unemployment rate in Ontario was 6.9% in August 2026.")
+    undated = _answer("The unemployment rate in Ontario is 6.9%.")
     with pytest.raises(UnexpectedModelBehavior, match="Exceeded maximum output retries"):
-        _run(httpx_mock, [FETCH_ONTARIO, unlinked, unlinked, unlinked])
+        _run(httpx_mock, [FETCH_ONTARIO, undated, undated, undated])
 
 
 def test_tool_call_limit_stops_a_spinning_run(httpx_mock: HTTPXMock) -> None:

@@ -1,9 +1,9 @@
 import {
   AlertTriangle,
+  ArrowRight,
   Check,
   Copy,
   Download,
-  HelpCircle,
   Info,
   RotateCcw,
 } from 'lucide-react'
@@ -61,24 +61,31 @@ export function AssistantReply({ message, active, onSend, onRetry }: Props) {
       )}
 
       {outcome?.kind === 'clarification' && (
-        <div className="space-y-2 rounded-lg border border-sky-300 bg-sky-50 p-3 dark:border-sky-800 dark:bg-sky-950">
-          <p className="flex items-start gap-2 font-medium">
-            <HelpCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-            {outcome.clarification.question}
-          </p>
-          <div className="flex flex-wrap gap-2">
+        // A question like any other reply, with the choices as a plain list of rows that
+        // wrap long text - no coloured box.
+        <div className="space-y-3">
+          <p>{outcome.clarification.question}</p>
+          <ul
+            aria-label="Choose one"
+            className="divide-y overflow-hidden rounded-lg border text-sm"
+          >
             {outcome.clarification.options.map((option) => (
-              <Button
-                key={option}
-                variant="outline"
-                size="sm"
-                disabled={active}
-                onClick={() => onSend(option)}
-              >
-                {option}
-              </Button>
+              <li key={option}>
+                <button
+                  type="button"
+                  disabled={active}
+                  onClick={() => onSend(option)}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <span>{option}</span>
+                  <ArrowRight
+                    className="size-4 shrink-0 text-muted-foreground"
+                    aria-hidden
+                  />
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
 

@@ -77,7 +77,7 @@ budget (2); after that the run fails visibly rather than returning an unchecked 
 | Check | Rule |
 |---|---|
 | Every number in the answer appears in a data-bearing tool result from this conversation | 5 |
-| Every `DataResult` used is cited (table, series where present) | 1 |
+| (Not checked in the text: the chat endpoint sends every used `DataResult` with the answer and the app shows each one's source beneath it - see `APP_INSTRUCTIONS` in `agent/system_prompt.py`) | 1 |
 | Reference period stated | 2 |
 | Non-normal status / symbol on a used data point is mentioned | 3 |
 

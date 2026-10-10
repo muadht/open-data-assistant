@@ -258,11 +258,11 @@ def test_wds_maintenance_window_becomes_an_error_event(httpx_mock: HTTPXMock) ->
 
 def test_validator_giving_up_becomes_validation_failed(httpx_mock: HTTPXMock) -> None:
     _mock_ontario(httpx_mock)
-    unlinked: Step = (
+    undated: Step = (
         "final_result_Answer",
-        {**ONTARIO_ANSWER_ARGS, "text": "Ontario's unemployment rate was 6.9% in August 2026."},
+        {**ONTARIO_ANSWER_ARGS, "text": "Ontario's unemployment rate is 6.9%."},
     )
-    with _client([ONTARIO_DATA, unlinked, unlinked, unlinked]) as client:
+    with _client([ONTARIO_DATA, undated, undated, undated]) as client:
         events = _events(client, "Ontario unemployment")
 
     assert events[-1][0] == "error"

@@ -6,6 +6,10 @@ model can fix the answer rather than the run returning an unchecked one.
 
 Only the structured `Answer.values` are checked against fetched data (not numbers in the
 free text) - the ticket's agreed starting point; see #48 for when to revisit that.
+
+Trust rule 1 (cite the source) isn't checked in the text: every value must trace to a fetched
+DataResult (rule 5, below), and the chat endpoint sends those DataResults with the answer, so
+the app always shows each series' source beneath it (APP_INSTRUCTIONS in system_prompt.py).
 """
 
 from __future__ import annotations
@@ -43,10 +47,6 @@ def _validate_answer(answer: Answer, fetched: dict[str, DataResult]) -> None:
                 "appear in any fetched data - only state numbers get_data returned."
             )
             continue
-
-        link = str(result.series_url or result.source_url)
-        if link not in answer.text:
-            problems.append(f"The answer must link this series: {link}")
 
         year = used.ref_per[:4]
         if year not in answer.text:
