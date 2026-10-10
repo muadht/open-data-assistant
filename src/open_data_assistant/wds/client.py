@@ -30,6 +30,10 @@ _RETRY_BACKOFF_SECONDS = 2.0
 # of concurrent MCP tool calls from this process can exceed it.
 _MAX_REQUESTS_PER_SECOND = 25
 
+# Table metadata only changes when StatCan releases (8:30 AM ET), so an hour is safely fresh
+# while still picking up a release the same morning.
+_METADATA_TTL_SECONDS = 3600.0
+
 
 class WdsError(Exception):
     """Base class for WDS errors that are real failures, not a SUCCESS/FAILED item."""
@@ -79,11 +83,16 @@ class WdsClient:
         *,
         max_retries: int = _MAX_RETRIES,
         retry_backoff_seconds: float = _RETRY_BACKOFF_SECONDS,
+        metadata_ttl_seconds: float = _METADATA_TTL_SECONDS,
     ) -> None:
         self._client = client or httpx.Client(base_url=BASE_URL, timeout=_TIMEOUT)
         self._rate_limiter = _RateLimiter(_MAX_REQUESTS_PER_SECOND)
         self._max_retries = max_retries
         self._retry_backoff_seconds = retry_backoff_seconds
+        self._metadata_ttl_seconds = metadata_ttl_seconds
+        self._cache_lock = Lock()
+        self._code_sets: dict[str, Any] | None = None
+        self._cube_metadata: dict[int, tuple[float, dict[str, Any]]] = {}
 
     def close(self) -> None:
         self._client.close()
@@ -141,15 +150,51 @@ class WdsClient:
     # ---------------------------------------------------------------------------- endpoints
 
     def get_cube_metadata(self, product_ids: list[int]) -> list[dict[str, Any]]:
-        return self._request(  # type: ignore[no-any-return]
-            "POST", "/getCubeMetadata", json_body=[{"productId": pid} for pid in product_ids]
-        )
+        """Cached per product for `metadata_ttl_seconds`; only SUCCESS items are cached."""
+        now = time.monotonic()
+        with self._cache_lock:
+            items = {
+                pid: item
+                for pid, (fetched_at, item) in self._cube_metadata.items()
+                if pid in product_ids and now - fetched_at < self._metadata_ttl_seconds
+            }
+        missing = [pid for pid in product_ids if pid not in items]
+        if missing:
+            fetched: list[dict[str, Any]] = self._request(
+                "POST", "/getCubeMetadata", json_body=[{"productId": pid} for pid in missing]
+            )
+            succeeded = {
+                int(item["object"]["productId"]): item
+                for item in fetched
+                if item["status"] == "SUCCESS"
+            }
+            # WDS doesn't guarantee response order (live-verified for batched series lookups),
+            # and a FAILED item carries only a message - so successes are matched by
+            # productId and failures fill the remaining product IDs in order.
+            failed = iter(item for item in fetched if item["status"] != "SUCCESS")
+            with self._cache_lock:
+                for pid in missing:
+                    if pid in succeeded:
+                        items[pid] = succeeded[pid]
+                        self._cube_metadata[pid] = (now, succeeded[pid])
+                    elif (failure := next(failed, None)) is not None:
+                        items[pid] = failure
+                    else:
+                        raise WdsError(f"getCubeMetadata returned no item for product {pid}")
+        return [items[pid] for pid in product_ids]
 
     def get_code_sets(self) -> dict[str, Any]:
+        """Cached for the client's lifetime - code sets are static lookup tables."""
+        with self._cache_lock:
+            if self._code_sets is not None:
+                return self._code_sets
         payload = self._request("GET", "/getCodeSets")
         if payload["status"] != "SUCCESS":
             raise WdsError(f"getCodeSets failed: {payload}")
-        return payload["object"]  # type: ignore[no-any-return]
+        code_sets: dict[str, Any] = payload["object"]
+        with self._cache_lock:
+            self._code_sets = code_sets
+        return code_sets
 
     def get_series_info_from_cube_pid_coord(
         self, items: list[tuple[int, str]]

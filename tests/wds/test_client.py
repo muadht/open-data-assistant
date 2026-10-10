@@ -167,3 +167,71 @@ def test_census_series_has_vector_zero_but_a_title(httpx_mock: HTTPXMock) -> Non
     obj = result[0]["object"]
     assert obj["vectorId"] == 0
     assert obj["SeriesTitleEn"]
+
+
+def test_code_sets_are_fetched_once_per_client(httpx_mock: HTTPXMock) -> None:
+    fixture = load_wds_fixture("code_sets")
+    httpx_mock.add_response(method="GET", url=f"{BASE_URL}/getCodeSets", json=fixture["body"])
+
+    with WdsClient() as client:
+        first = client.get_code_sets()
+        second = client.get_code_sets()
+
+    assert first is second
+    assert len(httpx_mock.get_requests()) == 1
+
+
+def test_cube_metadata_is_cached_per_product(httpx_mock: HTTPXMock) -> None:
+    fixture = load_wds_fixture("cube_metadata")
+    httpx_mock.add_response(method="POST", url=f"{BASE_URL}/getCubeMetadata", json=fixture["body"])
+
+    with WdsClient() as client:
+        client.get_cube_metadata([14100287])
+        result = client.get_cube_metadata([14100287])
+
+    assert result[0]["object"]["productId"] == "14100287"
+    assert len(httpx_mock.get_requests()) == 1
+
+
+def test_cube_metadata_is_refetched_once_stale(httpx_mock: HTTPXMock) -> None:
+    fixture = load_wds_fixture("cube_metadata")
+    for _ in range(2):
+        httpx_mock.add_response(
+            method="POST", url=f"{BASE_URL}/getCubeMetadata", json=fixture["body"]
+        )
+
+    with WdsClient(metadata_ttl_seconds=0) as client:
+        client.get_cube_metadata([14100287])
+        client.get_cube_metadata([14100287])
+
+    assert len(httpx_mock.get_requests()) == 2
+
+
+def test_failed_cube_metadata_is_not_cached(httpx_mock: HTTPXMock) -> None:
+    failed = [{"status": "FAILED", "object": "Product 99999999 not found"}]
+    httpx_mock.add_response(method="POST", url=f"{BASE_URL}/getCubeMetadata", json=failed)
+    httpx_mock.add_response(method="POST", url=f"{BASE_URL}/getCubeMetadata", json=failed)
+
+    with WdsClient() as client:
+        client.get_cube_metadata([99999999])
+        result = client.get_cube_metadata([99999999])
+
+    assert result[0]["status"] == "FAILED"
+    assert len(httpx_mock.get_requests()) == 2
+
+
+def test_cube_metadata_matches_items_by_product_id_not_position(httpx_mock: HTTPXMock) -> None:
+    """WDS can return items in a different order than requested."""
+    gdp = load_wds_fixture("gdp_cube_metadata")["body"][0]
+    lfs = load_wds_fixture("cube_metadata")["body"][0]
+    failed = {"status": "FAILED", "object": "The cube product ID 99999999 does not exist."}
+    httpx_mock.add_response(
+        method="POST", url=f"{BASE_URL}/getCubeMetadata", json=[lfs, failed, gdp]
+    )
+
+    with WdsClient() as client:
+        result = client.get_cube_metadata([36100104, 99999999, 14100287])
+
+    assert result[0]["object"]["productId"] == "36100104"
+    assert result[1]["status"] == "FAILED"
+    assert result[2]["object"]["productId"] == "14100287"
