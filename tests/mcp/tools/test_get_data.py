@@ -53,6 +53,10 @@ def test_normal_latest_n_fetch(httpx_mock: HTTPXMock) -> None:
     assert (
         str(result.source_url) == "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410028701"
     )
+    assert str(result.series_url) == (
+        "https://www150.statcan.gc.ca/t1/tbl1/en/sbv.action"
+        "?vectorNumbers=v2063949&searchOption=2&latestN=1"
+    )
 
 
 def test_range_fetch_requires_a_vector_id(httpx_mock: HTTPXMock) -> None:
@@ -80,6 +84,9 @@ def test_range_fetch_requires_a_vector_id(httpx_mock: HTTPXMock) -> None:
     assert result.series[0].value == 5.6
     assert result.series[-1].ref_per == "2024-01-01"
     assert result.series[-1].value == 6.1
+    assert str(result.series_url) == (
+        "https://www150.statcan.gc.ca/t1/tbl1/en/sbv.action?vectorNumbers=v2063949&searchOption=2"
+    )
 
 
 def test_census_table_latest_n_fetch_has_no_vector_id(httpx_mock: HTTPXMock) -> None:
@@ -93,6 +100,7 @@ def test_census_table_latest_n_fetch_has_no_vector_id(httpx_mock: HTTPXMock) -> 
         result = get_data(client, 98100001, selections, LatestNPeriod(n=1))
 
     assert result.vector_id is None
+    assert result.series_url is None
     assert result.coordinate == "7.1.0.0.0.0.0.0.0.0"
     assert result.series[0].value == 14223942.0
 
