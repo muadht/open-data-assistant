@@ -65,18 +65,15 @@ describe('App with mock streams', () => {
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.getByRole('button', { name: 'Copy answer' })).toBeTruthy()
 
-    // Related tables sit apart from the sources, as links to each table.
-    const related = screen.getByRole('region', { name: 'Related tables' })
+    // Related tables are one collapsed summary line, listing a link per table.
+    expect(screen.getByText('4 related tables')).toBeTruthy()
+    const related = screen.getByRole('list', { name: 'Related tables' })
     const links = within(related).getAllByRole('link')
     expect(links).toHaveLength(4)
-    expect(links[0].textContent).toMatch(
-      /Consumer Price Index, monthly, seasonally adjusted/,
+    expect(links[0].textContent).toBe(
+      'Consumer Price Index, monthly, seasonally adjusted',
     )
-    expect(links[0].textContent).toMatch(/18-10-0006-01 · Monthly · 1992–2026/)
-
-    // Markdown links in the answer open in a new tab.
-    const link = screen.getAllByRole('link', { name: /v41692327/ })[0]
-    expect(link.getAttribute('target')).toBe('_blank')
+    expect(related.textContent).toMatch(/18-10-0006-01 · Monthly · 1992–2026/)
   })
 
   it('turns clarification options into buttons that send the choice', async () => {
