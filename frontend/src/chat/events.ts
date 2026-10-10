@@ -29,6 +29,17 @@ export interface DataResult {
   retrieved_at: string
 }
 
+/** A catalogue table, as returned by search_tables (mcp/schemas.py TableCandidate). */
+export interface TableCandidate {
+  product_id: number
+  title_en: string
+  subjects: string[]
+  frequency: string
+  date_range: { start: string; end: string }
+  is_active: boolean
+  score: number
+}
+
 export interface UsedValue {
   coordinate: string
   ref_per: string
@@ -56,6 +67,8 @@ export interface AnswerEvent {
   text: string
   values: UsedValue[]
   data_results: DataResult[]
+  /** Other tables that may interest the user (#54); absent from older servers. */
+  related_tables?: TableCandidate[]
 }
 
 export interface ClarificationEvent {

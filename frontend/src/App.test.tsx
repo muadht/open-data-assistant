@@ -65,9 +65,15 @@ describe('App with mock streams', () => {
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.getByRole('button', { name: 'Copy answer' })).toBeTruthy()
 
-    // Markdown links in the answer open in a new tab.
-    const link = screen.getAllByRole('link', { name: /v41692327/ })[0]
-    expect(link.getAttribute('target')).toBe('_blank')
+    // Related tables are a row of chips: the first 3, then "+1 more" for the rest.
+    const related = screen.getByRole('region', { name: 'Related tables' })
+    expect(within(related).getAllByRole('link')).toHaveLength(3)
+    const first = within(related).getByRole('link', {
+      name: /^Consumer Price Index, monthly, seasonally adjusted, 18-10-0006-01 · Monthly · 1992–2026$/,
+    })
+    expect(first.getAttribute('target')).toBe('_blank')
+    fireEvent.click(within(related).getByRole('button', { name: '+1 more' }))
+    expect(within(related).getAllByRole('link')).toHaveLength(4)
   })
 
   it('turns clarification options into buttons that send the choice', async () => {

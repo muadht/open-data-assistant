@@ -11,7 +11,13 @@ See docs/mcp-tools-and-data-contract.md for the full contract.
 from __future__ import annotations
 
 from ...search.embeddings import EmbeddingProvider
-from ...search.hybrid import SearchClient, SearchHit, bm25_search, hybrid_search
+from ...search.hybrid import (
+    SearchClient,
+    SearchHit,
+    bm25_search,
+    hybrid_search,
+    similar_search,
+)
 from ...search.query import _FREQUENCY_TERMS, build_filters, parse_query
 from ..schemas import DateRange, TableCandidate, TableSearchFilters
 
@@ -34,9 +40,7 @@ def search_tables(
     # filter; a caller-supplied `filters.frequency` is additive, not a replacement - it only
     # applies when the query text itself didn't already pin one down.
     if filters.frequency is not None and parsed.frequency_code is None:
-        structured_filters.append(
-            {"term": {"frequency.code": _FREQUENCY_TERMS[filters.frequency]}}
-        )
+        structured_filters.append({"term": {"frequency.code": _FREQUENCY_TERMS[filters.frequency]}})
     if filters.subject is not None:
         structured_filters.append({"term": {"subjects.code": filters.subject}})
 
@@ -47,6 +51,16 @@ def search_tables(
     else:
         hits = hybrid_search(client, index_name, embedder, parsed, k, structured_filters)
 
+    return [_to_candidate(hit) for hit in hits]
+
+
+def similar_tables(
+    client: SearchClient, index_name: str, product_id: int, *, k: int = 5
+) -> list[TableCandidate]:
+    """Active tables most similar to `product_id`, by catalogue embedding. Not one of the
+    four MCP tools - used for an answer's related tables (#54) when the run had no search
+    results of its own to draw from."""
+    hits = similar_search(client, index_name, str(product_id), k, [{"term": {"archived": False}}])
     return [_to_candidate(hit) for hit in hits]
 
 
