@@ -1,25 +1,8 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { WIDE } from '@/lib/breakpoints'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
-
-const WIDE = '(min-width: 1024px)'
-
-function useIsWide(): boolean {
-  return useSyncExternalStore(
-    (onChange) => {
-      const query = window.matchMedia(WIDE)
-      query.addEventListener('change', onChange)
-      return () => query.removeEventListener('change', onChange)
-    },
-    () => window.matchMedia(WIDE).matches,
-  )
-}
 
 interface Props {
   open: boolean
@@ -36,7 +19,11 @@ interface Props {
  * conversation stays readable and the input usable while it's open. On narrow screens
  * there's no room beside it, so it opens over the chat instead. */
 export function SidePanel(props: Props) {
-  return useIsWide() ? <DockedPanel {...props} /> : <OverlayPanel {...props} />
+  return useMediaQuery(WIDE) ? (
+    <DockedPanel {...props} />
+  ) : (
+    <OverlayPanel {...props} />
+  )
 }
 
 function DockedPanel({ open, label, onClose, focusKey, children }: Props) {

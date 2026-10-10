@@ -61,6 +61,8 @@ export type ChatAction =
   | { type: 'end' }
   /** New chat: forget the conversation and its session. */
   | { type: 'reset' }
+  /** Switch to an earlier chat (#76): its messages, and its session to continue. */
+  | { type: 'restore'; state: ChatState }
 
 export const CUT_OFF_MESSAGE =
   'The connection was interrupted before an answer arrived. Please try again.'
@@ -81,6 +83,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return applyEvent(state, action.event)
     case 'reset':
       return initialChatState
+    case 'restore':
+      return { ...action.state, isStreaming: false }
     case 'fail':
       return {
         ...updateCurrent(state, (m) => ({
