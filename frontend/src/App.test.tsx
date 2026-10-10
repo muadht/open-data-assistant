@@ -65,15 +65,15 @@ describe('App with mock streams', () => {
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.getByRole('button', { name: 'Copy answer' })).toBeTruthy()
 
-    // Related tables are one collapsed summary line, listing a link per table.
-    expect(screen.getByText('4 related tables')).toBeTruthy()
-    const related = screen.getByRole('list', { name: 'Related tables' })
-    const links = within(related).getAllByRole('link')
-    expect(links).toHaveLength(4)
-    expect(links[0].textContent).toBe(
-      'Consumer Price Index, monthly, seasonally adjusted',
-    )
-    expect(related.textContent).toMatch(/18-10-0006-01 · Monthly · 1992–2026/)
+    // Related tables are a row of chips: the first 3, then "+1 more" for the rest.
+    const related = screen.getByRole('region', { name: 'Related tables' })
+    expect(within(related).getAllByRole('link')).toHaveLength(3)
+    const first = within(related).getByRole('link', {
+      name: /^Consumer Price Index, monthly, seasonally adjusted, 18-10-0006-01 · Monthly · 1992–2026$/,
+    })
+    expect(first.getAttribute('target')).toBe('_blank')
+    fireEvent.click(within(related).getByRole('button', { name: '+1 more' }))
+    expect(within(related).getAllByRole('link')).toHaveLength(4)
   })
 
   it('turns clarification options into buttons that send the choice', async () => {
