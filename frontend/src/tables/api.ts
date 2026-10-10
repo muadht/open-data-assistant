@@ -13,6 +13,8 @@ export interface TableSearchResponse {
   results: TableCandidate[]
   facets: {
     subjects: FacetValue[]
+    /** Every subject at any level, for searching subjects by name. */
+    all_subjects: FacetValue[]
     frequencies: FacetValue[]
     active: number
     archived: number

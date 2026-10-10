@@ -49,9 +49,7 @@ def test_bm25_search_sends_lexical_query_and_filters_and_parses_hits():
 
     hits = bm25_search(client, "statcan-products", parsed, k=10, filters=filters)
 
-    assert hits == [
-        SearchHit(doc_id="14100287", score=5.0, source={"title": {"en": "14100287"}})
-    ]
+    assert hits == [SearchHit(doc_id="14100287", score=5.0, source={"title": {"en": "14100287"}})]
     [call] = client.calls
     assert call["body"]["query"]["bool"]["filter"] == filters
     assert call["body"]["size"] == 10

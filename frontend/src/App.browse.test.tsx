@@ -47,6 +47,11 @@ const SEARCH: TableSearchResponse = {
       { value: 'Prices and price indexes', count: 43 },
       { value: 'Labour', count: 9 },
     ],
+    all_subjects: [
+      { value: 'Prices and price indexes', count: 43 },
+      { value: 'Prices and price indexes/Consumer price indexes', count: 12 },
+      { value: 'Labour', count: 9 },
+    ],
     frequencies: [{ value: 'Monthly', count: 43 }],
     active: 43,
     archived: 7,
@@ -149,6 +154,29 @@ describe('Browse tables', () => {
       within(filters).getByRole('button', { name: 'Clear subject' }),
     )
     await waitFor(() => expect(window.location.hash).toBe('#/browse'))
+  })
+
+  it('searches subjects at any level of the hierarchy', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Browse tables' }))
+    const filters = await screen.findByRole('group', { name: 'Filters' })
+    await screen.findByRole('region', { name: 'Results' })
+    fireEvent.click(within(filters).getByRole('button', { name: 'Subject' }))
+
+    fireEvent.change(await screen.findByLabelText('Search subjects'), {
+      target: { value: 'consumer' },
+    })
+    // A second-level subject, found without drilling down from "Prices".
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: /Prices and price indexes › Consumer price indexes\s*12/,
+      }),
+    )
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        '#/browse?subject=Prices+and+price+indexes%2FConsumer+price+indexes',
+      ),
+    )
   })
 
   it('opens a table in the drawer and asks about it from the chat', async () => {

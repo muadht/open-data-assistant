@@ -11,6 +11,7 @@ import {
   EMPTY_BROWSE,
   searchTables,
   type BrowseParams,
+  type FacetValue,
   type TableSearchResponse,
 } from '@/tables/api'
 import { cn } from '@/lib/utils'
@@ -121,24 +122,13 @@ export function BrowsePage({ params, onParamsChange, onOpenTable }: Props) {
           value={params.subject.split('/').at(-1) || null}
           onClear={() => set({ subject: '' })}
         >
-          {params.subject && (
-            <SubjectTrail
-              subject={params.subject}
+          {facets && (
+            <SubjectPicker
+              selected={params.subject}
+              level={facets.subjects}
+              all={facets.all_subjects}
               onPick={(subject) => set({ subject })}
             />
-          )}
-          {facets?.subjects.map((f) => (
-            <FilterOption
-              key={f.value}
-              label={f.value.split('/').at(-1)!}
-              count={f.count}
-              onClick={() => set({ subject: f.value })}
-            />
-          ))}
-          {facets && facets.subjects.length === 0 && (
-            <p className="px-2 py-1 text-muted-foreground">
-              No narrower subjects.
-            </p>
           )}
         </FilterMenu>
         <FilterMenu
@@ -314,6 +304,73 @@ function FilterMenu({
         {children}
       </PopoverContent>
     </Popover>
+  )
+}
+
+/** The subject filter: a search box over every subject at any level, or - with the box
+ * empty - StatCan's hierarchy one level at a time, with a trail back up. */
+function SubjectPicker({
+  selected,
+  level,
+  all,
+  onPick,
+}: {
+  selected: string
+  level: FacetValue[]
+  all: FacetValue[]
+  onPick: (subject: string) => void
+}) {
+  const [search, setSearch] = useState('')
+  const terms = search.trim().toLowerCase()
+  const matches = terms
+    ? all.filter((f) => f.value.toLowerCase().includes(terms)).slice(0, 50)
+    : []
+  return (
+    <div className="space-y-1">
+      <input
+        autoFocus
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search subjects"
+        aria-label="Search subjects"
+        className="mb-1 w-full rounded-md border bg-background px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      {terms ? (
+        <>
+          {matches.map((f) => (
+            <FilterOption
+              key={f.value}
+              label={f.value.split('/').join(' › ')}
+              count={f.count}
+              selected={selected === f.value}
+              onClick={() => onPick(f.value)}
+            />
+          ))}
+          {matches.length === 0 && (
+            <p className="px-2 py-1 text-muted-foreground">
+              No matching subjects.
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          {selected && <SubjectTrail subject={selected} onPick={onPick} />}
+          {level.map((f) => (
+            <FilterOption
+              key={f.value}
+              label={f.value.split('/').at(-1)!}
+              count={f.count}
+              onClick={() => onPick(f.value)}
+            />
+          ))}
+          {level.length === 0 && (
+            <p className="px-2 py-1 text-muted-foreground">
+              No narrower subjects.
+            </p>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 
