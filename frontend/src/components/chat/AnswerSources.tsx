@@ -83,13 +83,18 @@ export function AnswerSources({ citations }: { citations: Citations }) {
               href={group.table.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-foreground hover:underline"
+              // Inline text, not flex: a long title wraps like a sentence, and the table
+              // number stays together with the icon instead of breaking onto two lines.
+              className="text-foreground hover:underline"
             >
-              {group.table.title}
-              <span className="text-muted-foreground">
+              {group.table.title}{' '}
+              <span className="whitespace-nowrap text-muted-foreground">
                 ({tableNumber(group.table.productId)})
+                <ExternalLink
+                  className="ml-1 inline size-3 align-baseline"
+                  aria-hidden
+                />
               </span>
-              <ExternalLink className="size-3" aria-hidden />
             </a>
             {group.shared.length > 0 && (
               <p className="text-xs">All series: {group.shared.join(' · ')}</p>
