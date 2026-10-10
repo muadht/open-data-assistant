@@ -20,12 +20,16 @@ uv run mypy .
 
 ## Building the catalogue index
 
-Needs a running OpenSearch instance (not set up in this repo yet — see [docs/architecture-overview.md](docs/architecture-overview.md)'s open items on hosting/Docker).
+Needs a running OpenSearch. `docker-compose.yml` starts one locally on `localhost:9200`, which is what the defaults point at. It's dev-only (security disabled), not a deployment setup. Needs Docker running.
 
 ```bash
-uv run build-catalogue      # WDS -> data/catalogue.json (not committed; see .gitignore)
-uv run ingest-opensearch    # data/catalogue.json -> OpenSearch, embedding each record
+docker compose up -d              # start OpenSearch (data persists in a Docker volume)
+uv run build-catalogue            # WDS -> data/catalogue.json (not committed; see .gitignore)
+uv run ingest-opensearch --limit 200   # quick smoke test first...
+uv run ingest-opensearch          # ...then the full catalogue (~8,000 tables, a few minutes)
 ```
+
+`build-catalogue` makes thousands of WDS calls, so it takes a while and fails during the WDS maintenance window (midnight–8:30 AM ET). `ingest-opensearch` downloads the embedding model on first run. Re-running it overwrites documents by product ID, so it's safe to repeat. `docker compose down` stops OpenSearch and keeps the index; add `-v` to delete it.
 
 Both are configurable via environment variables (`OPENSEARCH_HOST`, `OPENSEARCH_PORT`, `OPENSEARCH_INDEX`, `EMBEDDING_MODEL`, etc.) — see `src/open_data_assistant/search/config.py` for the full list and defaults.
 
@@ -55,7 +59,7 @@ Start a new Claude Code session in the repo. The first time, it asks you to appr
 
 **What works without extra setup**
 
-`get_table_structure`, `find_members`, and `get_data` only need internet access to StatCan's WDS (they make real WDS calls). `search_tables` also needs a running OpenSearch with the catalogue index built (see above). Without it, `search_tables` returns a clear "can't reach OpenSearch" error.
+`get_table_structure`, `find_members`, and `get_data` only need internet access to StatCan's WDS (they make real WDS calls). `search_tables` also needs a running OpenSearch with the catalogue index built (see [Building the catalogue index](#building-the-catalogue-index)). Without it, `search_tables` returns a clear "can't reach OpenSearch" error.
 
 Try: *"Use find_members to look up Ontario in table 14100287, then get_data for the latest unemployment rate there."*
 
