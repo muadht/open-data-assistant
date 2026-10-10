@@ -39,6 +39,19 @@ MAX_MESSAGE_LENGTH = 2000
 class ChatRequest(BaseModel):
     session_id: str | None = None
     message: str = Field(min_length=1, max_length=MAX_MESSAGE_LENGTH)
+    # Set by "Ask about this table" on the browse page (#56): answer from this table.
+    table_id: int | None = Field(default=None, ge=1)
+
+
+def pinned_table_instructions(table_id: int) -> str:
+    """The run-level instruction for a table the user picked themselves - the agent-design
+    "concept shortcut", chosen by the user instead of a lookup map."""
+    return (
+        f"The user has chosen table {table_id} (product_id) to ask about. Answer from this "
+        "table: skip search_tables and start with get_table_structure for it. If the "
+        "question can't be answered from this table, say so (Unanswerable) and suggest "
+        "removing the table choice."
+    )
 
 
 def sse(event: str, data: dict[str, Any]) -> str:
@@ -53,6 +66,7 @@ async def chat_events(
     *,
     usage_limits: UsageLimits,
     timeout_seconds: float,
+    table_id: int | None = None,
 ) -> AsyncIterator[str]:
     """The SSE stream for one message. Expects `session.lock` to be held by the caller and
     releases it when the stream ends, however it ends."""
@@ -69,6 +83,7 @@ async def chat_events(
                     message_history=session.messages,
                     deps=deps,
                     usage_limits=usage_limits,
+                    instructions=pinned_table_instructions(table_id) if table_id else None,
                 ) as events:
                     async for event in events:
                         if isinstance(event, FunctionToolCallEvent):

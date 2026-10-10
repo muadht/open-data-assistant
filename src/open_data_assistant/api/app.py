@@ -24,6 +24,7 @@ from ..search.pipeline import make_client
 from ..wds.client import WdsClient
 from .chat import MAX_MESSAGE_LENGTH, ChatRequest, chat_events
 from .sessions import SessionStore
+from .tables import router as tables_router
 
 logger = logging.getLogger(__name__)
 
@@ -54,13 +55,17 @@ def create_app(
     app = FastAPI(title="Open Data Assistant", lifespan=lifespan)
 
     @app.exception_handler(RequestValidationError)
-    async def bad_request(_: Request, exc: RequestValidationError) -> JSONResponse:
+    async def bad_request(request: Request, exc: RequestValidationError) -> JSONResponse:
         # docs/chat-api.md specifies 400 with a readable detail, not FastAPI's default 422.
+        if request.url.path != "/chat":
+            fields = ", ".join(str(e["loc"][-1]) for e in exc.errors())
+            return JSONResponse(status_code=400, content={"detail": f"Invalid {fields}."})
         return JSONResponse(
             status_code=400,
             content={
                 "detail": "Send a JSON body with a non-empty `message` of at most "
-                f"{MAX_MESSAGE_LENGTH} characters, and an optional `session_id`."
+                f"{MAX_MESSAGE_LENGTH} characters, an optional `session_id` and an optional "
+                "`table_id`."
             },
         )
 
@@ -85,6 +90,7 @@ def create_app(
             request.message,
             usage_limits=usage_limits,
             timeout_seconds=timeout_seconds,
+            table_id=request.table_id,
         )
         return StreamingResponse(
             events,
@@ -92,6 +98,7 @@ def create_app(
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
+    app.include_router(tables_router)
     return app
 
 

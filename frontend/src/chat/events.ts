@@ -37,6 +37,8 @@ export interface TableCandidate {
   frequency: string
   date_range: { start: string; end: string }
   is_active: boolean
+  /** When StatCan last released data for the table, YYYY-MM-DD (#57). */
+  last_released?: string | null
   score: number
 }
 

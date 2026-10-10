@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { TableCandidate } from '@/chat/events'
-import { coverageYears, tableNumber, tableUrl } from '@/chat/tables'
+import { coverageYears, tableNumber } from '@/chat/tables'
 import {
   HoverCard,
   HoverCardContent,
@@ -11,8 +11,14 @@ const VISIBLE = 3
 
 /** Other tables that may interest the user, as one row of small chips. Secondary
  * information: titles are truncated, and hovering a chip shows the full title and
- * metadata. Each chip links to StatCan's page until the table details panel exists (#56). */
-export function RelatedTables({ tables }: { tables: TableCandidate[] }) {
+ * metadata. Clicking a chip opens the table's details drawer (#56). */
+export function RelatedTables({
+  tables,
+  onOpen,
+}: {
+  tables: TableCandidate[]
+  onOpen: (productId: number) => void
+}) {
   const [showAll, setShowAll] = useState(false)
   if (!tables.length) return null
   const shown = showAll ? tables : tables.slice(0, VISIBLE)
@@ -25,7 +31,7 @@ export function RelatedTables({ tables }: { tables: TableCandidate[] }) {
     >
       <span className="mr-0.5 text-muted-foreground">Related</span>
       {shown.map((table) => (
-        <RelatedChip key={table.product_id} table={table} />
+        <RelatedChip key={table.product_id} table={table} onOpen={onOpen} />
       ))}
       {hidden > 0 && (
         <button
@@ -40,22 +46,27 @@ export function RelatedTables({ tables }: { tables: TableCandidate[] }) {
   )
 }
 
-function RelatedChip({ table }: { table: TableCandidate }) {
+function RelatedChip({
+  table,
+  onOpen,
+}: {
+  table: TableCandidate
+  onOpen: (productId: number) => void
+}) {
   const details = `${tableNumber(table.product_id)} · ${table.frequency} · ${coverageYears(table.date_range)}${table.is_active ? '' : ' · Archived'}`
   return (
     <HoverCard openDelay={300} closeDelay={100}>
       <HoverCardTrigger asChild>
-        <a
-          href={tableUrl(table.product_id)}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={() => onOpen(table.product_id)}
           // The hover card is for pointer users; this gives keyboard and screen-reader
           // users the same information.
           aria-label={`${table.title_en}, ${details}`}
           className="max-w-56 truncate rounded-full border px-2 py-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           {table.title_en}
-        </a>
+        </button>
       </HoverCardTrigger>
       <HoverCardContent className="w-80 space-y-1 text-sm">
         <p className="font-medium">{table.title_en}</p>
@@ -65,7 +76,7 @@ function RelatedChip({ table }: { table: TableCandidate }) {
             {table.subjects.at(-1)?.split('/').join(' › ')}
           </p>
         )}
-        <p className="text-xs text-muted-foreground">Opens on StatCan</p>
+        <p className="text-xs text-muted-foreground">Click for details</p>
       </HoverCardContent>
     </HoverCard>
   )

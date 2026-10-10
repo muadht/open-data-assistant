@@ -18,7 +18,7 @@ export function useChat(transport: ChatTransport = defaultTransport) {
   const controllerRef = useRef<AbortController | null>(null)
 
   const send = useCallback(
-    (text: string) => {
+    (text: string, tableId?: number) => {
       const message = text.trim()
       if (!message || state.isStreaming) return
       const controller = new AbortController()
@@ -31,7 +31,7 @@ export function useChat(transport: ChatTransport = defaultTransport) {
       })
       void runChat(
         transport,
-        { session_id: state.sessionId, message },
+        { session_id: state.sessionId, message, table_id: tableId },
         dispatch,
         controller.signal,
       )

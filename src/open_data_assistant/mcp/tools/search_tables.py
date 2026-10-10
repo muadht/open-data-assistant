@@ -51,7 +51,7 @@ def search_tables(
     else:
         hits = hybrid_search(client, index_name, embedder, parsed, k, structured_filters)
 
-    return [_to_candidate(hit) for hit in hits]
+    return [to_candidate(hit) for hit in hits]
 
 
 def similar_tables(
@@ -61,10 +61,10 @@ def similar_tables(
     four MCP tools - used for an answer's related tables (#54) when the run had no search
     results of its own to draw from."""
     hits = similar_search(client, index_name, str(product_id), k, [{"term": {"archived": False}}])
-    return [_to_candidate(hit) for hit in hits]
+    return [to_candidate(hit) for hit in hits]
 
 
-def _to_candidate(hit: SearchHit) -> TableCandidate:
+def to_candidate(hit: SearchHit) -> TableCandidate:
     source = hit.source
     coverage = source.get("coverage") or {}
     return TableCandidate(
@@ -77,5 +77,6 @@ def _to_candidate(hit: SearchHit) -> TableCandidate:
             end=coverage.get("end_date") or "",
         ),
         is_active=not source.get("archived", False),
+        last_released=(source.get("release_time") or "")[:10] or None,
         score=hit.score,
     )
