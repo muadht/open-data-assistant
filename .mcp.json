@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "open-data-assistant": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "mcp-server"]
+    }
+  }
+}
