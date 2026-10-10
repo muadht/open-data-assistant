@@ -17,6 +17,7 @@ import {
   MessageActions,
   MessageContent,
 } from '@/components/ui/message'
+import { AnswerChart } from './AnswerChart'
 import { AnswerSources } from './AnswerSources'
 import { RelatedTables } from './RelatedTables'
 import { Steps } from './Steps'
@@ -52,7 +53,7 @@ export function AssistantReply({ message, active, onSend, onRetry }: Props) {
           >
             {outcome.answer.text}
           </MessageContent>
-          {/* The chart for outcome.answer.data_results renders here (#16). */}
+          <AnswerChart results={outcome.answer.data_results} />
           <AnswerSources answer={outcome.answer} />
           <AnswerActions text={outcome.answer.text} />
           <RelatedTables tables={outcome.answer.related_tables ?? []} />

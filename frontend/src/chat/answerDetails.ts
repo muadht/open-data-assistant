@@ -49,15 +49,15 @@ function seriesName(result: DataResult): string {
   return members.length ? members.join(' · ') : result.series_title_en
 }
 
-function pointFlags(point: DataPoint): string[] {
+/** Quality flags on one data point, in plain words. The chart tooltip omits the period,
+ * since it already shows it. */
+export function pointFlags(point: DataPoint, withPeriod = true): string[] {
   const flags: string[] = []
-  if (point.value === null) flags.push(`${point.ref_per}: no value published`)
-  if (point.status !== 'normal') flags.push(`${point.ref_per}: ${point.status}`)
-  if (point.symbol) flags.push(`${point.ref_per}: ${point.symbol}`)
-  if (point.security_level !== 'public') {
-    flags.push(`${point.ref_per}: ${point.security_level}`)
-  }
-  return flags
+  if (point.value === null) flags.push('no value published')
+  if (point.status !== 'normal') flags.push(point.status)
+  if (point.symbol) flags.push(point.symbol)
+  if (point.security_level !== 'public') flags.push(point.security_level)
+  return withPeriod ? flags.map((flag) => `${point.ref_per}: ${flag}`) : flags
 }
 
 function unique<T>(items: T[]): T[] {
