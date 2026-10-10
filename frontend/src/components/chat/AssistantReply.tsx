@@ -46,7 +46,7 @@ export function AssistantReply({
 
       {outcome?.kind === 'answer' && (
         <>
-          <AnswerBody answer={outcome.answer} />
+          <AnswerBody answer={outcome.answer} onOpenTable={onOpenTable} />
           <RelatedTables
             tables={outcome.answer.related_tables ?? []}
             onOpen={onOpenTable}
@@ -160,7 +160,13 @@ function AnswerActions({ text }: { text: string }) {
 
 /** The answer text with its citation markers as numbered links (#63), then the chart, the
  * sources and the actions. */
-function AnswerBody({ answer }: { answer: AnswerEvent }) {
+function AnswerBody({
+  answer,
+  onOpenTable,
+}: {
+  answer: AnswerEvent
+  onOpenTable: (productId: number) => void
+}) {
   const cited = useMemo(() => citations(answer), [answer])
   const components = useMemo<Partial<Components>>(
     () => ({
@@ -188,7 +194,7 @@ function AnswerBody({ answer }: { answer: AnswerEvent }) {
         {linkCitations(answer.text, cited.sourceOfValue)}
       </MessageContent>
       <AnswerChart results={answer.data_results} />
-      <AnswerSources citations={cited} />
+      <AnswerSources citations={cited} onOpenTable={onOpenTable} />
       <AnswerActions text={answer.text.replace(/\s*(\[\d+\])+/g, '')} />
     </>
   )

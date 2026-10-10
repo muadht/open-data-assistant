@@ -1,4 +1,4 @@
-import { AlertTriangle, ExternalLink } from 'lucide-react'
+import { AlertTriangle, ExternalLink, ListTree } from 'lucide-react'
 import {
   formatPeriods,
   type CitedSource,
@@ -59,7 +59,13 @@ function SourceSummary({ source }: { source: CitedSource }) {
 /** All of an answer's sources, always visible: a numbered list grouped by table, with the
  * shared members and StatCan's notes once per table. A flag count in the heading makes
  * flagged sources stand out (trust rule 3). */
-export function AnswerSources({ citations }: { citations: Citations }) {
+export function AnswerSources({
+  citations,
+  onOpenTable,
+}: {
+  citations: Citations
+  onOpenTable: (productId: number) => void
+}) {
   const { sources, groups, flaggedCount } = citations
   if (!sources.length) return null
   return (
@@ -96,6 +102,15 @@ export function AnswerSources({ citations }: { citations: Citations }) {
                 />
               </span>
             </a>
+            <button
+              type="button"
+              onClick={() => onOpenTable(group.table.productId)}
+              aria-label={`View structure of ${group.table.title}`}
+              className="ml-2 inline-flex items-center gap-1 rounded px-1 align-baseline text-xs hover:bg-muted hover:text-foreground"
+            >
+              <ListTree className="size-3" aria-hidden />
+              View structure
+            </button>
             {group.shared.length > 0 && (
               <p className="text-xs">All series: {group.shared.join(' · ')}</p>
             )}

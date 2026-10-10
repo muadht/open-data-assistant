@@ -14,6 +14,13 @@ import { EXAMPLE_QUESTIONS } from './chat/examples'
 import { createMockTransport } from './chat/transport'
 
 beforeAll(() => {
+  // The table panel (#70) checks the screen width.
+  window.matchMedia ??= () =>
+    ({
+      matches: false,
+      addEventListener() {},
+      removeEventListener() {},
+    }) as unknown as MediaQueryList
   // jsdom lacks these; the chat container's stick-to-bottom scrolling uses them.
   globalThis.ResizeObserver ??= class {
     observe() {}

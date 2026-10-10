@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-// The browse page, table drawer and "Ask about this table" (#56), with the tables API
-// stubbed at fetch and the chat answered by a capturing transport.
+// The browse page, table drawer and "Ask about this table" (#56), and a table's details beside
+// the chat (#70), with the tables API stubbed at fetch and the chat answered by a capturing
+// transport.
 import {
   cleanup,
   fireEvent,
@@ -19,6 +20,7 @@ import {
   vi,
 } from 'vitest'
 import App from './App'
+import answerSingle from './mocks/answer-single.sse?raw'
 import clarification from './mocks/clarification.sse?raw'
 import type { ChatRequest, ChatTransport } from './chat/transport'
 import type { TableDetails, TableSearchResponse } from './tables/api'
@@ -105,7 +107,17 @@ beforeAll(() => {
   Element.prototype.scrollTo ??= () => {}
 })
 
+// Whether the screen is wide enough for the chat's table panel to sit beside it.
+let wide = true
+
 beforeEach(() => {
+  wide = true
+  window.matchMedia = () =>
+    ({
+      matches: wide,
+      addEventListener() {},
+      removeEventListener() {},
+    }) as unknown as MediaQueryList
   window.location.hash = ''
   fetchMock.mockClear()
   vi.stubGlobal('fetch', fetchMock)
@@ -227,5 +239,87 @@ describe('Browse tables', () => {
       screen.getByRole('button', { name: 'Stop asking about this table' }),
     )
     expect(screen.queryByText(/Asking about:/)).toBeNull()
+  })
+})
+
+describe('Table structure in the chat', () => {
+  async function answered() {
+    render(<App transport={async () => new Response(answerSingle)} />)
+    fireEvent.change(screen.getByLabelText('Your question'), {
+      target: { value: 'Unemployment rate in Ontario?' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    return screen.findByRole('region', { name: 'Sources' })
+  }
+
+  it('opens beside the chat from a source, and closes with ✕ or Escape', async () => {
+    const sources = await answered()
+    fireEvent.click(
+      within(sources).getAllByRole('button', { name: /^View structure of/ })[0],
+    )
+
+    const panel = await screen.findByRole('complementary')
+    expect(await within(panel).findByText('Canada')).toBeTruthy()
+    expect(within(panel).getByText('+29 more')).toBeTruthy()
+    expect(requested()).toContain('/tables/14100287')
+    // Beside the chat, not over it: no dialog, and the input still works.
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByLabelText('Your question')).toBeTruthy()
+
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Close table details' }),
+    )
+    expect(screen.queryByRole('complementary')).toBeNull()
+
+    fireEvent.click(
+      within(sources).getAllByRole('button', { name: /^View structure of/ })[0],
+    )
+    await screen.findByRole('complementary')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('complementary')).toBeNull()
+  })
+
+  it('shows one table at a time, and asks about it from the panel', async () => {
+    const sources = await answered()
+    fireEvent.click(
+      within(sources).getAllByRole('button', { name: /^View structure of/ })[0],
+    )
+    await screen.findByRole('complementary')
+
+    // A related table replaces the open one rather than opening a second panel.
+    const related = screen.getByRole('region', { name: 'Related tables' })
+    fireEvent.click(within(related).getAllByRole('button', { name: /·/ })[0])
+    await waitFor(() => expect(requested()).toContain('/tables/14100375'))
+    expect(screen.getAllByRole('complementary')).toHaveLength(1)
+
+    const panel = screen.getByRole('complementary')
+    fireEvent.click(
+      await within(panel).findByRole('button', {
+        name: /Ask about this table/,
+      }),
+    )
+    expect(screen.getByText(/Asking about: Consumer Price Index/)).toBeTruthy()
+    // The panel stays open for reference while asking.
+    expect(screen.getByRole('complementary')).toBeTruthy()
+
+    // The pinned chip opens it again after closing.
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Close table details' }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'View structure of this table' }),
+    )
+    expect(await screen.findByRole('complementary')).toBeTruthy()
+  })
+
+  it('opens over the chat on a narrow screen', async () => {
+    wide = false
+    const sources = await answered()
+    fireEvent.click(
+      within(sources).getAllByRole('button', { name: /^View structure of/ })[0],
+    )
+    const drawer = await screen.findByRole('dialog')
+    expect(await within(drawer).findByText('Canada')).toBeTruthy()
+    expect(screen.queryByRole('complementary')).toBeNull()
   })
 })
