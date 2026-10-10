@@ -64,6 +64,12 @@
   --series-6: #008300;
   --series-7: #4a3aa7;
   --series-8: #e34948;
+  /* Sequential ramp for the province map (#82): one hue, lightest = lowest value. */
+  --seq-1: #d4e4f7;
+  --seq-2: #a6c6ee;
+  --seq-3: #6fa1e0;
+  --seq-4: #3b78c9;
+  --seq-5: #1d4f91;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -111,6 +117,13 @@
   --series-6: #008300;
   --series-7: #9085e9;
   --series-8: #e66767;
+  /* On the dark surface the ramp runs the other way: low values sink into the background,
+     high values stand out. */
+  --seq-1: #1c3150;
+  --seq-2: #24497a;
+  --seq-3: #2f68ab;
+  --seq-4: #4f8fd8;
+  --seq-5: #9cc3f0;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);

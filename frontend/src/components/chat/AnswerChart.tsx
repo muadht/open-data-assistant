@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   Line,
   LineChart,
@@ -13,33 +14,44 @@ import {
   YAxis,
 } from 'recharts'
 import {
-  chartSpecs,
+  chartGroups,
   formatValue,
   periodLabeller,
   type BarChartSpec,
+  type ChartGroup,
   type ChartSpec,
   type LineChartSpec,
 } from '@/chat/chartSpec'
 import type { DataResult } from '@/chat/events'
+import { cn } from '@/lib/utils'
+import { ProvinceMap } from './ProvinceMap'
 
 const AXIS_TICK = { fill: 'var(--muted-foreground)', fontSize: 12 }
 
 /** The answer's data as charts - one per unit (docs: chat/chartSpec.ts for the rules). Each
  * chart can switch to a table, which carries the same values and flags as the tooltip. */
 export function AnswerChart({ results }: { results: DataResult[] }) {
-  const specs = chartSpecs(results)
-  if (!specs.length) return null
+  const groups = chartGroups(results)
+  if (!groups.length) return null
   return (
     <div className="space-y-4">
-      {specs.map((spec) => (
-        <ChartCard key={spec.unit} spec={spec} />
+      {groups.map((group) => (
+        <ChartCard key={group.unit} group={group} />
       ))}
     </div>
   )
 }
 
-function ChartCard({ spec }: { spec: ChartSpec }) {
+const VIEW_LABELS: Record<ChartSpec['kind'], string> = {
+  line: 'Line',
+  map: 'Map',
+  bar: 'Bar',
+}
+
+function ChartCard({ group }: { group: ChartGroup }) {
+  const [viewIndex, setViewIndex] = useState(0)
   const [asTable, setAsTable] = useState(false)
+  const spec = group.views[viewIndex] ?? group.views[0]
   return (
     <figure className="space-y-2 rounded-lg border p-3">
       <figcaption className="flex items-start justify-between gap-2 text-sm">
@@ -48,21 +60,53 @@ function ChartCard({ spec }: { spec: ChartSpec }) {
           {!['Percent', 'Dollars'].includes(spec.unit) && (
             <span className="text-muted-foreground"> ({spec.unit})</span>
           )}
+          {spec.kind === 'map' && (
+            <span className="text-muted-foreground">
+              {' '}
+              · {periodLabeller([spec.refPer])(spec.refPer)}
+            </span>
+          )}
         </span>
-        <button
-          type="button"
-          onClick={() => setAsTable(!asTable)}
-          aria-pressed={asTable}
-          className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          <Table2 className="size-3.5" aria-hidden />
-          {asTable ? 'Show chart' : 'Show as table'}
-        </button>
+        <span className="flex shrink-0 items-center gap-1">
+          {group.views.length > 1 && !asTable && (
+            <span
+              role="group"
+              aria-label="Chart type"
+              className="inline-flex rounded-md border p-0.5 text-xs"
+            >
+              {group.views.map((view, i) => (
+                <button
+                  key={view.kind}
+                  type="button"
+                  aria-pressed={i === viewIndex}
+                  onClick={() => setViewIndex(i)}
+                  className={cn(
+                    'rounded px-1.5 py-0.5 text-muted-foreground hover:text-foreground',
+                    i === viewIndex && 'bg-muted font-medium text-foreground',
+                  )}
+                >
+                  {VIEW_LABELS[view.kind]}
+                </button>
+              ))}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setAsTable(!asTable)}
+            aria-pressed={asTable}
+            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <Table2 className="size-3.5" aria-hidden />
+            {asTable ? 'Show chart' : 'Show as table'}
+          </button>
+        </span>
       </figcaption>
       {asTable ? (
         <ChartTable spec={spec} />
       ) : spec.kind === 'line' ? (
         <LineView spec={spec} />
+      ) : spec.kind === 'map' ? (
+        <ProvinceMap spec={spec} />
       ) : (
         <BarView spec={spec} />
       )}
@@ -228,11 +272,14 @@ function BarView({ spec }: { spec: BarChartSpec }) {
           />
           <Bar
             dataKey="value"
-            fill="var(--series-1)"
             maxBarSize={24}
             radius={[0, 4, 4, 0]}
             isAnimationActive={false}
-          />
+          >
+            {spec.bars.map((bar) => (
+              <Cell key={bar.key} fill={bar.color} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -261,10 +308,20 @@ function ChartTable({ spec }: { spec: ChartSpec }) {
             decimals: s.decimals,
           })),
         }))
-      : spec.bars.map((bar) => ({
-          label: `${bar.name} (${bar.refPer})`,
-          cells: [bar],
-        }))
+      : spec.kind === 'map'
+        ? [
+            ...(spec.national
+              ? [{ label: 'Canada', cells: [spec.national] }]
+              : []),
+            ...spec.regions.map((region) => ({
+              label: region.name,
+              cells: [region],
+            })),
+          ]
+        : spec.bars.map((bar) => ({
+            label: `${bar.name} (${bar.refPer})`,
+            cells: [bar],
+          }))
   const headers =
     spec.kind === 'line' ? spec.series.map((s) => s.name) : ['Value']
   return (
@@ -273,7 +330,11 @@ function ChartTable({ spec }: { spec: ChartSpec }) {
         <thead className="sticky top-0 bg-background text-left text-muted-foreground">
           <tr>
             <th className="py-1 pr-3 font-normal">
-              {spec.kind === 'line' ? 'Period' : 'Series'}
+              {spec.kind === 'line'
+                ? 'Period'
+                : spec.kind === 'map'
+                  ? 'Province or territory'
+                  : 'Series'}
             </th>
             {headers.map((h) => (
               <th key={h} className="py-1 pr-3 text-right font-normal">

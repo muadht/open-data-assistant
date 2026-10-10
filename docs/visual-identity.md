@@ -18,6 +18,7 @@ past Statistics Canada's communications team.
 | **Colours:** navy `#26374a` (primary buttons), red `#af3c43` (the heading bar and the leaf) | `index.css` (`--primary`, `--gc-accent`) | Canada.ca's palette. Colours aren't protected. |
 | **Red bar under the main heading** | Start screen | A Canada.ca convention. |
 | **Fonts:** Lato (headings), Noto Sans (text) | `index.css` | Canada.ca's typefaces, free under the SIL Open Font Licence. Self-hosted through `@fontsource`. |
+| **Province/territory map outlines** | Charts (#82) | [Natural Earth](https://www.naturalearthdata.com/) 1:50m admin-1 boundaries, public domain, built into `chat/charts/provinceShapes.ts` by `frontend/scripts/build-province-map.mjs`. Statistics Canada's boundary files (Open Licence) would also do; the script takes either after small changes. |
 | **"Français" link** | Top right | A placeholder where Canada.ca puts its language toggle. GC public tools must be available in both official languages. |
 
 ## What the UI must not use

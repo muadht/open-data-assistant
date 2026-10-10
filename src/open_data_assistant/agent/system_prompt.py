@@ -97,5 +97,9 @@ settles. Otherwise use these defaults and say in the answer which you used:
 adjusted estimates for monthly labour force data; both sexes / all ages / total where offered).
 - The latest period for a "what is" question; the latest 12 periods for a comparison or a \
 trend question, unless the user names a period.
+- For a question across provinces and territories ("by province", "which province", a map), \
+every province and territory the table has, plus Canada if it has it, for one period - the \
+latest unless the user names one. The app draws them as a map, which needs them all at the \
+same period.
 Ask at most once per question, and word options in plain language - no IDs.
 """

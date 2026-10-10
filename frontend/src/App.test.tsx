@@ -110,6 +110,28 @@ describe('App with mock streams', () => {
     expect(chips()).toHaveLength(4)
   })
 
+  it('maps an answer across the provinces, with a switch to ranked bars (#82)', async () => {
+    renderApp()
+    ask('Unemployment rate by province')
+    const map = await screen.findByRole('img', { name: /^Map: / })
+    // Each province carries its value; one the data doesn't cover says so.
+    expect(
+      within(map).getByLabelText('Newfoundland and Labrador: 9.1%'),
+    ).toBeTruthy()
+    expect(within(map).getByLabelText('Nunavut: No data')).toBeTruthy()
+    expect(screen.getByText('Canada:')).toBeTruthy()
+
+    // The table lists every province and territory, including those with no data.
+    fireEvent.click(screen.getByRole('button', { name: 'Show as table' }))
+    expect(screen.getByRole('row', { name: /Nunavut/ }).textContent).toContain(
+      '–',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Show chart' }))
+
+    fireEvent.click(screen.getByRole('button', { name: /^Bar$/ }))
+    expect(screen.getByRole('img', { name: /^Bar chart: / })).toBeTruthy()
+  })
+
   it('turns clarification options into buttons that send the choice', async () => {
     renderApp()
     ask("What's inflation?")

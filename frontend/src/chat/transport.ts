@@ -27,6 +27,7 @@ const mockStreams = import.meta.glob<string>('../mocks/*.sse', {
 
 // Keyword routing so each mock can be tried from the UI; see src/mocks/README.md.
 const MOCK_ROUTES: [RegExp, string][] = [
+  [/provinc|territor|\bmap\b/i, 'answer-provinces'],
   [/compar|\bvs\.?\b|versus|alberta/i, 'answer-comparison'],
   [/inflation/i, 'clarification'],
   [/census|quarter/i, 'unanswerable'],
