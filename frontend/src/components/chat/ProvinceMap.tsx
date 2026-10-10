@@ -20,6 +20,9 @@ export function ProvinceMap({ spec }: { spec: MapChartSpec }) {
   const hasNoData = spec.regions.some((r) => r.value === null)
   const format = (value: number | null, places = decimals) =>
     formatValue(value, spec.unit, places)
+  // Short forms (43K, 3.3M) keep the legend scannable; hover and the table give exact values.
+  const legendValue = (value: number) =>
+    formatValue(value, spec.unit, decimals, true)
 
   return (
     <div className="space-y-2">
@@ -115,8 +118,8 @@ export function ProvinceMap({ spec }: { spec: MapChartSpec }) {
           <li key={step.color} className="flex items-center gap-1.5">
             <Swatch fill={step.color} />
             {step.from === step.to
-              ? format(step.from)
-              : `${format(step.from)}–${format(step.to)}`}
+              ? legendValue(step.from)
+              : `${legendValue(step.from)}–${legendValue(step.to)}`}
           </li>
         ))}
         {hasNoData && (

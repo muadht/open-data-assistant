@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import answerPopulation from '../../mocks/answer-population.sse?raw'
 import answerProvinces from '../../mocks/answer-provinces.sse?raw'
 import { chartGroups, type BarChartSpec, type MapChartSpec } from '../chartSpec'
 import type { DataPoint, DataResult } from '../events'
@@ -68,6 +69,15 @@ describe('the province/territory map', () => {
       value: null,
       flags: ['No data'],
     })
+  })
+
+  it('maps every province and territory when the data covers them all', async () => {
+    const [group] = chartGroups(await dataResults(answerPopulation))
+    const map = group.views[0] as MapChartSpec
+    expect(map.kind).toBe('map')
+    expect(map.regions.every((r) => r.value !== null)).toBe(true)
+    expect(map.regions.find((r) => r.code === 'NU')?.value).toBe(43091)
+    expect(map.national?.value).toBe(41798407)
   })
 
   it('offers bars ranked by value, with Canada in grey', async () => {
