@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 // Canada wordmark: those are official marks for federal institutions only, and this is a
 // prototype. If it becomes an official Statistics Canada service, the official signature
 // replaces Logo here, and PRODUCT_NAME and the Prototype label change with it.
+// See docs/visual-identity.md for what the UI may and may not use, and why.
 
 export const PRODUCT_NAME = 'Open Data Assistant'
 
