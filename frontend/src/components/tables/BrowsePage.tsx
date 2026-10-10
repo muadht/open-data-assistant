@@ -225,13 +225,15 @@ export function BrowsePage({ params, onParamsChange, onOpenTable }: Props) {
             No tables match. Try fewer filters or different words.
           </p>
         )}
-        <ul className="space-y-2">
-          {current?.pages.map((table) => (
-            <li key={table.product_id}>
-              <TableCard table={table} onOpen={onOpenTable} />
-            </li>
-          ))}
-        </ul>
+        {current && current.pages.length > 0 && (
+          <ul className="divide-y overflow-hidden rounded-lg border">
+            {current.pages.map((table) => (
+              <li key={table.product_id}>
+                <TableCard table={table} onOpen={onOpenTable} />
+              </li>
+            ))}
+          </ul>
+        )}
         {loading && (
           <p className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
             <Loader2 className="size-4 animate-spin" aria-hidden /> Loading…

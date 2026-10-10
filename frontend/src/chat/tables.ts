@@ -18,3 +18,15 @@ export function coverageYears({
   const [from, to] = [start.slice(0, 4), end.slice(0, 4)]
   return from === to ? from : `${from}–${to}`
 }
+
+const RELEASE_DATE = new Intl.DateTimeFormat('en-CA', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+})
+
+/** A readable release date: "2026-09-14" -> "Sep 14, 2026". */
+export function formatReleaseDate(isoDate: string): string {
+  return RELEASE_DATE.format(new Date(`${isoDate}T00:00:00Z`))
+}

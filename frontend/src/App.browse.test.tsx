@@ -117,11 +117,10 @@ describe('Browse tables', () => {
 
     const results = await screen.findByRole('region', { name: 'Results' })
     expect(within(results).getByText('1 table')).toBeTruthy()
-    expect(
-      within(results).getByText(
-        /18-10-0006-01 · Monthly · 1992–2026 · updated 2026-09-14/,
-      ),
-    ).toBeTruthy()
+    // One divided list: what the table is on the left, when and how often on the right.
+    expect(within(results).getByText('Consumer price indexes')).toBeTruthy()
+    expect(within(results).getByText('Updated Sep 14, 2026')).toBeTruthy()
+    expect(within(results).getByText('Monthly · 1992–2026')).toBeTruthy()
 
     // Filters are one row of compact buttons, each opening a menu of options with counts.
     const filters = screen.getByRole('group', { name: 'Filters' })

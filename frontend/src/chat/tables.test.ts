@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { coverageYears, tableNumber, tableUrl } from './tables'
+import {
+  coverageYears,
+  formatReleaseDate,
+  tableNumber,
+  tableUrl,
+} from './tables'
 
 describe('table formatting', () => {
   it('formats product IDs as StatCan table numbers', () => {
@@ -20,5 +25,9 @@ describe('table formatting', () => {
     expect(coverageYears({ start: '2021-01-01', end: '2021-01-01' })).toBe(
       '2021',
     )
+  })
+
+  it('formats release dates for reading', () => {
+    expect(formatReleaseDate('2026-09-14')).toBe('Sep 14, 2026')
   })
 })
