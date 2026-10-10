@@ -36,6 +36,18 @@ function renderApp() {
   render(<App transport={createMockTransport(0)} />)
 }
 
+/** Picks a view from a chart's ⋯ menu. Radix menus open on pointerdown, not click. */
+async function chooseView(
+  name: string | RegExp,
+  scope: HTMLElement = document.body,
+) {
+  fireEvent.pointerDown(
+    within(scope).getByRole('button', { name: 'Chart view' }),
+    { button: 0, ctrlKey: false },
+  )
+  fireEvent.click(await screen.findByRole('menuitemradio', { name }))
+}
+
 function ask(question: string) {
   fireEvent.change(screen.getByLabelText('Your question'), {
     target: { value: question },
@@ -54,9 +66,7 @@ describe('App with mock streams', () => {
     expect(
       within(chart).getByRole('img', { name: 'Line chart: All-items' }),
     ).toBeTruthy()
-    fireEvent.click(
-      within(chart).getByRole('button', { name: /Show as table/ }),
-    )
+    await chooseView('Table', chart)
     const table = within(chart).getByRole('table')
     expect(within(table).getByText('Alberta')).toBeTruthy()
     expect(within(table).getAllByRole('row')).toHaveLength(14) // header + 13 months
@@ -110,7 +120,7 @@ describe('App with mock streams', () => {
     expect(chips()).toHaveLength(4)
   })
 
-  it('maps an answer across the provinces, with a switch to ranked bars (#82)', async () => {
+  it('maps an answer across the provinces, with a menu to switch to ranked bars or a table (#82, #86)', async () => {
     renderApp()
     ask('Unemployment rate by province')
     const map = await screen.findByRole('img', { name: /^Map: / })
@@ -121,14 +131,26 @@ describe('App with mock streams', () => {
     expect(within(map).getByLabelText('Nunavut: No data')).toBeTruthy()
     expect(screen.getByText('Canada:')).toBeTruthy()
 
+    // The ⋯ menu offers the views that fit, then the table, with the current one ticked.
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Chart view' }), {
+      button: 0,
+      ctrlKey: false,
+    })
+    const options = await screen.findAllByRole('menuitemradio')
+    expect(options.map((o) => o.textContent)).toEqual([
+      'Map',
+      'Bar chart',
+      'Table',
+    ])
+    expect(options[0].getAttribute('aria-checked')).toBe('true')
+
     // The table lists every province and territory, including those with no data.
-    fireEvent.click(screen.getByRole('button', { name: 'Show as table' }))
+    fireEvent.click(options[2])
     expect(screen.getByRole('row', { name: /Nunavut/ }).textContent).toContain(
       '–',
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Show chart' }))
 
-    fireEvent.click(screen.getByRole('button', { name: /^Bar$/ }))
+    await chooseView('Bar chart')
     expect(screen.getByRole('img', { name: /^Bar chart: / })).toBeTruthy()
   })
 

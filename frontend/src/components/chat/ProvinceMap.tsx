@@ -8,8 +8,8 @@ type Region = MapChartSpec['regions'][number]
 
 /** Provinces and territories coloured by value, light to dark (#82). A province without a
  * value is hatched grey and says "No data", so it never reads as the lowest value. Hover or
- * focus a province for its value; the switch above offers the same data ranked as bars, and
- * "Show as table" lists it. */
+ * focus a province for its value; the chart menu offers the same data ranked as bars, and
+ * the Table view lists it. */
 export function ProvinceMap({ spec }: { spec: MapChartSpec }) {
   const hatch = useId()
   const [active, setActive] = useState<Region | null>(null)

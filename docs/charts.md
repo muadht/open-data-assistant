@@ -30,7 +30,7 @@ flowchart TD
         SH --> R{"Try each recipe in order:<br/>line, map, bar"}
         R -->|"each returns a chart or null"| V["Views that fit, best first"]
         V -->|none| NC["No chart: the text states the number"]
-        V -->|one or more| CARD["Chart card: default view,<br/>a switch when several fit,<br/>Show as table"]
+        V -->|one or more| CARD["Chart card: default view,<br/>a ⋯ menu of the views that fit<br/>and the table"]
     end
 ```
 
@@ -54,8 +54,8 @@ an axis, so percent and dollars get separate charts. Each group becomes a `DataS
 ## Step 2: the recipes
 
 A **recipe** is a function from a shape to a chart, or `null` when that kind of chart doesn't
-fit. All recipes are tried in order; every chart that fits is offered, and the first is the
-default.
+fit. All recipes are tried in order; every chart that fits is offered in the chart's ⋯ menu
+(with the table), and the first is the default.
 
 ```mermaid
 flowchart TD
@@ -92,7 +92,7 @@ flowchart TD
 - **No data:** a province the data doesn't cover is hatched grey and labelled "No data", never
   coloured as if it were a low value.
 - **Reading it:** hover or keyboard focus shows a province's value; with nothing hovered,
-  Canada's value is shown as the reference. "Show as table" lists every province and territory.
+  Canada's value is shown as the reference. The table view lists every province and territory.
 - **Outlines:** Natural Earth (public domain), projected to Statistics Canada's Lambert and
   simplified to 12 KB in `charts/provinceShapes.ts`, built by
   `frontend/scripts/build-province-map.mjs`. Province level only; no cities or census areas.
@@ -102,8 +102,8 @@ flowchart TD
 1. **A recipe** in `charts/recipes.ts`: a function taking a `DataShape` and returning its chart
    spec, or `null` when it doesn't fit. Add it to `RECIPES` where it should rank.
 2. **A spec type** in `chartSpec.ts`, added to the `ChartSpec` union.
-3. **A view** in `AnswerChart.tsx` (and a label for the switch), plus its rows in "Show as
-   table".
+3. **A view** in `AnswerChart.tsx` (and its label and icon in the chart's ⋯ menu), plus its
+   rows in the table view.
 4. **Tests** in `charts/recipes.test.ts`: when it applies, and when it must not.
 
 Candidates: grouped bars by sex or gender; a population pyramid (Age and Sex both vary); change
