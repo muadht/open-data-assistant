@@ -1,6 +1,6 @@
 # Tables API: browsing the catalogue
 
-Read-only endpoints behind the "Browse tables" page (#56), served by the same FastAPI app as
+Read-only endpoints behind "Browse tables" (#56, a panel beside the chat since #74), served by the same FastAPI app as
 `POST /chat` ([chat-api.md](chat-api.md)). Implemented in `api/tables.py`, with the search in
 `search/browse.py`.
 

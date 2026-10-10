@@ -15,12 +15,14 @@ import {
   type TableSearchResponse,
 } from '@/tables/api'
 import { cn } from '@/lib/utils'
+import { PanelClose } from './PanelClose'
 import { TableCard } from './TableCard'
 
 interface Props {
   params: BrowseParams
   onParamsChange: (params: BrowseParams) => void
   onOpenTable: (productId: number) => void
+  onClose: () => void
 }
 
 interface Loaded {
@@ -29,9 +31,16 @@ interface Loaded {
   response: TableSearchResponse
 }
 
-/** Find tables yourself (#56): search, filters with counts, and results that open the
- * table's details. The filters live in the URL, so a view can be shared or bookmarked. */
-export function BrowsePage({ params, onParamsChange, onOpenTable }: Props) {
+/** Find tables yourself (#56), in the panel beside the chat (#74): search, filters with
+ * counts, and results that open the table's details. The panel is narrow, so the controls
+ * stay fixed above a scrolling list and the secondary ones (archived, sort) sit in the
+ * result line. The filters live in the URL, so a view can be shared or bookmarked. */
+export function BrowsePane({
+  params,
+  onParamsChange,
+  onOpenTable,
+  onClose,
+}: Props) {
   const key = JSON.stringify(params)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [page, setPage] = useState({ key, number: 1 })
@@ -84,116 +93,112 @@ export function BrowsePage({ params, onParamsChange, onOpenTable }: Props) {
       : null
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-4 px-4 py-6">
-      <form
-        role="search"
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          set({ q: draft.trim() })
-        }}
-      >
-        <div className="relative flex-1">
+    <>
+      <header className="flex items-center gap-2 border-b p-4">
+        <h2 tabIndex={-1} className="flex-1 font-semibold focus:outline-none">
+          Browse tables
+        </h2>
+        <PanelClose label="Close browse tables" onClose={onClose} />
+      </header>
+
+      <div className="space-y-3 border-b p-4">
+        <form
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault()
+            set({ q: draft.trim() })
+          }}
+          className="relative"
+        >
           <Search
             className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
           />
           <input
+            type="search"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Search StatCan tables, e.g. consumer prices"
+            placeholder="Search tables, e.g. consumer prices"
             aria-label="Search tables"
-            className="h-10 w-full rounded-full border bg-background pr-4 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            enterKeyHint="search"
+            className="h-9 w-full rounded-full border bg-background pr-4 pl-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
-        </div>
-        <Button type="submit" className="rounded-full">
-          Search
-        </Button>
-      </form>
+        </form>
 
-      {/* One row of filters: each a compact button showing its value, opening a menu. */}
-      <div
-        role="group"
-        aria-label="Filters"
-        className="flex flex-wrap items-center gap-2 text-sm"
-      >
-        <FilterMenu
-          label="Subject"
-          value={params.subject.split('/').at(-1) || null}
-          onClear={() => set({ subject: '' })}
+        {/* One row of filters: each a compact button showing its value, opening a menu. */}
+        <div
+          role="group"
+          aria-label="Filters"
+          className="flex flex-wrap items-center gap-2 text-sm"
         >
-          {facets && (
-            <SubjectPicker
-              selected={params.subject}
-              level={facets.subjects}
-              all={facets.all_subjects}
-              onPick={(subject) => set({ subject })}
-            />
-          )}
-        </FilterMenu>
-        <FilterMenu
-          label="Frequency"
-          value={params.frequency || null}
-          onClear={() => set({ frequency: '' })}
-        >
-          {facets?.frequencies.map((f) => (
-            <FilterOption
-              key={f.value}
-              label={f.value}
-              count={f.count}
-              selected={params.frequency === f.value}
-              onClick={() =>
-                set({ frequency: params.frequency === f.value ? '' : f.value })
-              }
-            />
-          ))}
-        </FilterMenu>
-        <FilterMenu
-          label="Years"
-          value={years}
-          onClear={() => set({ from: '', to: '' })}
-        >
-          <p className="px-2 pb-1 text-xs text-muted-foreground">
-            Tables covering any year in this range
-          </p>
-          <YearRange
-            from={params.from}
-            to={params.to}
-            onChange={(from, to) => set({ from, to })}
-          />
-        </FilterMenu>
-        <label className="flex items-center gap-1.5 px-2 text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={params.includeArchived}
-            onChange={(e) => set({ includeArchived: e.target.checked })}
-          />
-          Include archived
-        </label>
-        <label className="ml-auto flex items-center gap-2 text-muted-foreground">
-          Sort
-          <select
-            // Without search text there's nothing to rank by relevance.
-            value={params.q ? params.sort : 'updated'}
-            onChange={(e) =>
-              set({ sort: e.target.value as BrowseParams['sort'] })
-            }
-            className="rounded-md border bg-background px-2 py-1 text-foreground"
+          <FilterMenu
+            label="Subject"
+            value={params.subject.split('/').at(-1) || null}
+            onClear={() => set({ subject: '' })}
           >
-            {params.q && <option value="relevance">Most relevant</option>}
-            <option value="updated">Recently updated</option>
-          </select>
-        </label>
-      </div>
+            {facets && (
+              <SubjectPicker
+                selected={params.subject}
+                level={facets.subjects}
+                all={facets.all_subjects}
+                onPick={(subject) => set({ subject })}
+              />
+            )}
+          </FilterMenu>
+          <FilterMenu
+            label="Frequency"
+            value={params.frequency || null}
+            onClear={() => set({ frequency: '' })}
+          >
+            {facets?.frequencies.map((f) => (
+              <FilterOption
+                key={f.value}
+                label={f.value}
+                count={f.count}
+                selected={params.frequency === f.value}
+                onClick={() =>
+                  set({
+                    frequency: params.frequency === f.value ? '' : f.value,
+                  })
+                }
+              />
+            ))}
+          </FilterMenu>
+          <FilterMenu
+            label="Years"
+            value={years}
+            onClear={() => set({ from: '', to: '' })}
+          >
+            <p className="px-2 pb-1 text-xs text-muted-foreground">
+              Tables covering any year in this range
+            </p>
+            <YearRange
+              from={params.from}
+              to={params.to}
+              onChange={(from, to) => set({ from, to })}
+            />
+          </FilterMenu>
+        </div>
 
-      <section aria-label="Results" className="space-y-3">
-        <p className="flex items-center gap-3 text-sm text-muted-foreground">
+        {/* The result line: the count, then the secondary controls as small text. */}
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span>
             {current &&
               (params.q
                 ? `Top ${current.response.total} matches`
                 : `${current.response.total.toLocaleString('en-CA')} ${current.response.total === 1 ? 'table' : 'tables'}`)}
           </span>
+          {facets && (params.includeArchived || facets.archived > 0) && (
+            <button
+              type="button"
+              onClick={() => set({ includeArchived: !params.includeArchived })}
+              className="hover:text-foreground hover:underline"
+            >
+              {params.includeArchived
+                ? 'Hide archived'
+                : `Show ${facets.archived.toLocaleString('en-CA')} archived`}
+            </button>
+          )}
           {filtered && (
             <button
               type="button"
@@ -203,20 +208,36 @@ export function BrowsePage({ params, onParamsChange, onOpenTable }: Props) {
               Clear filters
             </button>
           )}
+          {/* Without search text there's nothing to rank by relevance: always newest first. */}
+          {params.q && (
+            <select
+              value={params.sort}
+              onChange={(e) =>
+                set({ sort: e.target.value as BrowseParams['sort'] })
+              }
+              aria-label="Sort"
+              className="ml-auto rounded border-0 bg-transparent py-0.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <option value="relevance">Most relevant</option>
+              <option value="updated">Recently updated</option>
+            </select>
+          )}
         </p>
+      </div>
 
+      <section aria-label="Results" className="min-h-0 flex-1 overflow-y-auto">
         {error && (
-          <p role="alert" className="text-destructive">
+          <p role="alert" className="p-4 text-sm text-destructive">
             {error}
           </p>
         )}
         {current?.pages.length === 0 && (
-          <p className="py-8 text-center text-muted-foreground">
+          <p className="p-8 text-center text-sm text-muted-foreground">
             No tables match. Try fewer filters or different words.
           </p>
         )}
         {current && current.pages.length > 0 && (
-          <ul className="divide-y overflow-hidden rounded-lg border">
+          <ul className="divide-y">
             {current.pages.map((table) => (
               <li key={table.product_id}>
                 <TableCard table={table} onOpen={onOpenTable} />
@@ -225,16 +246,17 @@ export function BrowsePage({ params, onParamsChange, onOpenTable }: Props) {
           </ul>
         )}
         {loading && (
-          <p className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
+          <p className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" aria-hidden /> Loading…
           </p>
         )}
         {current &&
           !loading &&
           current.pages.length < current.response.total && (
-            <div className="flex justify-center pt-2">
+            <div className="flex justify-center border-t p-3">
               <Button
-                variant="outline"
+                variant="ghost"
+                size="sm"
                 onClick={() => setPage({ key, number: pageNumber + 1 })}
               >
                 Load more
@@ -242,7 +264,7 @@ export function BrowsePage({ params, onParamsChange, onOpenTable }: Props) {
             </div>
           )}
       </section>
-    </div>
+    </>
   )
 }
 

@@ -1,17 +1,17 @@
-import { ArrowUp, Square, SquarePen, Table2, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { ArrowUp, Library, Square, SquarePen, Table2, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '@/chat/chatState'
 import { nextExamples } from '@/chat/examples'
 import { tableNumber } from '@/chat/tables'
 import type { ChatTransport } from '@/chat/transport'
 import { browseParamsFrom, browseSearchParams } from '@/tables/api'
-import { useHashRoute, type View } from '@/tables/useHashRoute'
+import { useHashRoute } from '@/tables/useHashRoute'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/chat/useChat'
 import { AssistantReply } from '@/components/chat/AssistantReply'
-import { BrowsePage } from '@/components/tables/BrowsePage'
-import { TableDrawer } from '@/components/tables/TableDrawer'
-import { TablePanel } from '@/components/tables/TablePanel'
+import { BrowsePane } from '@/components/tables/BrowsePane'
+import { SidePanel } from '@/components/tables/SidePanel'
+import { TableDetailsPane } from '@/components/tables/TableDetails'
 import { Button } from '@/components/ui/button'
 import {
   ChatContainerContent,
@@ -30,17 +30,22 @@ import {
 const firstExamples = nextExamples()
 
 // One centred column, like Claude/ChatGPT: charts (#16) and exports (#17) live inside each
-// answer. The only side panel is a table's details (#70), opened on demand.
+// answer. Beside it, on demand, one panel for finding tables and seeing a table's details
+// (#70, #74), so looking something up never hides the conversation.
 export default function App({ transport }: { transport?: ChatTransport }) {
   const { messages, isStreaming, send, stop, reset } = useChat(transport)
   const [input, setInput] = useState('')
   const [examples, setExamples] = useState(firstExamples)
   const inputAreaRef = useRef<HTMLDivElement>(null)
   const { route, navigate } = useHashRoute()
-  // The table whose details are open: in a drawer over the browse page, and in a panel
-  // beside the chat (#70). Kept apart so one view's table doesn't open in the other.
-  const [drawerTable, setDrawerTable] = useState<number | null>(null)
-  const [panelTable, setPanelTable] = useState<number | null>(null)
+  // The panel shows browsing while the URL is #/browse?..., and a table's details over it
+  // (with a way back) or on their own.
+  const browsing = route.view === 'browse'
+  const [detailTable, setDetailTable] = useState<number | null>(null)
+  // Closing the browse panel leaves #/browse, so its filters are kept here for reopening.
+  const [lastBrowse, setLastBrowse] = useState(() =>
+    browsing ? route.search : new URLSearchParams(),
+  )
   // "Ask about this table": sent with every message until removed (#56).
   const [pinned, setPinned] = useState<{
     productId: number
@@ -53,6 +58,20 @@ export default function App({ transport }: { transport?: ChatTransport }) {
     if (!isStreaming) inputAreaRef.current?.querySelector('textarea')?.focus()
   }, [isStreaming])
 
+  const closePanel = useCallback(() => {
+    setDetailTable(null)
+    if (browsing) navigate('chat')
+  }, [browsing, navigate])
+
+  const toggleBrowse = () => {
+    if (browsing && detailTable === null) {
+      navigate('chat')
+    } else {
+      setDetailTable(null)
+      navigate('browse', lastBrowse)
+    }
+  }
+
   const submit = (text: string) => {
     if (!text.trim() || isStreaming) return
     send(text, pinned?.productId)
@@ -63,7 +82,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
     reset()
     setInput('')
     setPinned(null)
-    setPanelTable(null)
+    setDetailTable(null)
     setExamples(nextExamples())
   }
 
@@ -77,7 +96,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
           />
           <button
             type="button"
-            onClick={() => setPanelTable(pinned.productId)}
+            onClick={() => setDetailTable(pinned.productId)}
             title="View table details"
             className="truncate hover:underline"
           >
@@ -141,137 +160,129 @@ export default function App({ transport }: { transport?: ChatTransport }) {
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <header className="flex items-center justify-between gap-4 px-4 py-3">
         <h1 className="font-semibold">StatCan Data Assistant</h1>
-        <nav
-          aria-label="Views"
-          className="flex rounded-full border p-0.5 text-sm"
-        >
-          {(
-            [
-              ['chat', 'Chat'],
-              ['browse', 'Browse tables'],
-            ] as [View, string][]
-          ).map(([view, label]) => (
-            <button
-              key={view}
-              type="button"
-              aria-current={route.view === view ? 'page' : undefined}
-              onClick={() => navigate(view)}
-              className={cn(
-                'rounded-full px-3 py-1 text-muted-foreground hover:text-foreground',
-                route.view === view && 'bg-muted font-medium text-foreground',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={newChat}
-          disabled={messages.length === 0 && !pinned}
-          className={cn(route.view !== 'chat' && 'invisible')}
-        >
-          <SquarePen aria-hidden />
-          New chat
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-pressed={browsing && detailTable === null}
+            onClick={toggleBrowse}
+            className={cn(browsing && detailTable === null && 'bg-muted')}
+          >
+            <Library aria-hidden />
+            Browse tables
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={newChat}
+            disabled={messages.length === 0 && !pinned}
+          >
+            <SquarePen aria-hidden />
+            New chat
+          </Button>
+        </div>
       </header>
 
-      {route.view === 'browse' ? (
-        <main className="min-h-0 flex-1 overflow-y-auto">
-          <BrowsePage
-            params={browseParamsFrom(route.search)}
-            onParamsChange={(params) =>
-              navigate('browse', browseSearchParams(params))
-            }
-            onOpenTable={setDrawerTable}
-          />
-        </main>
-      ) : (
-        <div className="flex min-h-0 flex-1">
-          {messages.length === 0 ? (
-            <main className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-24">
-              <div className="space-y-1 text-center">
-                <h2 className="text-2xl font-semibold">
-                  What would you like to know?
-                </h2>
-                <p className="text-muted-foreground">
-                  Ask about Statistics Canada data in plain language. Every
-                  answer cites its source.
-                </p>
-              </div>
-              <div className="w-full max-w-3xl">{prompt}</div>
-              <div className="flex max-w-3xl flex-wrap justify-center gap-2">
-                {examples.map((example) => (
-                  <Button
-                    key={example}
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full"
-                    onClick={() => submit(example)}
-                  >
-                    {example}
-                  </Button>
-                ))}
-              </div>
-            </main>
-          ) : (
-            <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <ChatContainerRoot className="flex-1">
-                <ChatContainerContent
-                  className="mx-auto w-full max-w-3xl gap-8 px-4 py-6"
-                  role="log"
-                  aria-live="polite"
-                  aria-busy={isStreaming}
+      <div className="flex min-h-0 flex-1">
+        {messages.length === 0 ? (
+          <main className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-24">
+            <div className="space-y-1 text-center">
+              <h2 className="text-2xl font-semibold">
+                What would you like to know?
+              </h2>
+              <p className="text-muted-foreground">
+                Ask about Statistics Canada data in plain language. Every answer
+                cites its source.
+              </p>
+            </div>
+            <div className="w-full max-w-3xl">{prompt}</div>
+            <div className="flex max-w-3xl flex-wrap justify-center gap-2">
+              {examples.map((example) => (
+                <Button
+                  key={example}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => submit(example)}
                 >
-                  {messages.map((message, index) =>
-                    message.role === 'user' ? (
-                      <Message key={message.id} className="justify-end">
-                        <MessageContent className="max-w-[85%] rounded-3xl bg-muted px-4 py-2">
-                          {message.text}
-                        </MessageContent>
-                      </Message>
-                    ) : (
-                      <AssistantReply
-                        key={message.id}
-                        message={message}
-                        active={isStreaming && index === messages.length - 1}
-                        onSend={submit}
-                        onRetry={() =>
-                          submit(previousQuestion(messages, index))
-                        }
-                        onOpenTable={setPanelTable}
-                      />
-                    ),
-                  )}
-                </ChatContainerContent>
-              </ChatContainerRoot>
-              <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-                {prompt}
-                <p className="mt-2 text-center text-xs text-muted-foreground">
-                  Answers use Statistics Canada data only. Check the sources for
-                  each answer.
-                </p>
-              </div>
-            </main>
+                  {example}
+                </Button>
+              ))}
+            </div>
+          </main>
+        ) : (
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <ChatContainerRoot className="flex-1">
+              <ChatContainerContent
+                className="mx-auto w-full max-w-3xl gap-8 px-4 py-6"
+                role="log"
+                aria-live="polite"
+                aria-busy={isStreaming}
+              >
+                {messages.map((message, index) =>
+                  message.role === 'user' ? (
+                    <Message key={message.id} className="justify-end">
+                      <MessageContent className="max-w-[85%] rounded-3xl bg-muted px-4 py-2">
+                        {message.text}
+                      </MessageContent>
+                    </Message>
+                  ) : (
+                    <AssistantReply
+                      key={message.id}
+                      message={message}
+                      active={isStreaming && index === messages.length - 1}
+                      onSend={submit}
+                      onRetry={() => submit(previousQuestion(messages, index))}
+                      onOpenTable={setDetailTable}
+                    />
+                  ),
+                )}
+              </ChatContainerContent>
+            </ChatContainerRoot>
+            <div className="mx-auto w-full max-w-3xl px-4 pb-4">
+              {prompt}
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                Answers use Statistics Canada data only. Check the sources for
+                each answer.
+              </p>
+            </div>
+          </main>
+        )}
+        <SidePanel
+          open={browsing || detailTable !== null}
+          label={detailTable !== null ? 'Table details' : 'Browse tables'}
+          onClose={closePanel}
+          focusKey={detailTable ?? 'browse'}
+        >
+          {browsing && (
+            // Kept mounted under a table's details, so "Back to results" returns to the
+            // same results and scroll position.
+            <div
+              hidden={detailTable !== null}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <BrowsePane
+                params={browseParamsFrom(route.search)}
+                onParamsChange={(params) => {
+                  const search = browseSearchParams(params)
+                  setLastBrowse(search)
+                  navigate('browse', search)
+                }}
+                onOpenTable={setDetailTable}
+                onClose={closePanel}
+              />
+            </div>
           )}
-          <TablePanel
-            productId={panelTable}
-            onClose={() => setPanelTable(null)}
-            onAsk={setPinned}
-          />
-        </div>
-      )}
-
-      <TableDrawer
-        productId={drawerTable}
-        onClose={() => setDrawerTable(null)}
-        onAsk={(table) => {
-          setPinned(table)
-          setDrawerTable(null)
-          navigate('chat')
-        }}
-      />
+          {detailTable !== null && (
+            <TableDetailsPane
+              productId={detailTable}
+              onBack={browsing ? () => setDetailTable(null) : undefined}
+              onClose={closePanel}
+              onAsk={setPinned}
+            />
+          )}
+        </SidePanel>
+      </div>
     </div>
   )
 }
