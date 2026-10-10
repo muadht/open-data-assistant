@@ -12,7 +12,7 @@ past Statistics Canada's communications team.
 
 | Element | Where | Source and licence |
 |---|---|---|
-| **Name: "Open Data Assistant"**, with a "Prototype" label | Sidebar, page title | Our own. Not "StatCan …" or "Statistics Canada …", which would read as StatCan's own tool. |
+| **Name: "Open Data Assistant"** | Sidebar, page title | Our own. Not "StatCan …" or "Statistics Canada …", which would read as StatCan's own tool. |
 | **Logo:** a line-chart symbol in the primary colour (navy; pale navy in dark mode) | Sidebar | Lucide's `chart-spline` icon (ISC licence), in `components/brand/Brand.tsx`. |
 | **Maple leaf** (the stylized 11-point leaf) | Above the start screen's heading, and on the "Answers use Statistics Canada data only" note | Canadian Heritage's official artwork, traced from `MapleLeaf.eps` in [Commercial use of symbols of Canada](https://www.canada.ca/en/canadian-heritage/services/commercial-use-symbols-canada.html). Filled in our red. Decoration only, never the logo. See the conditions below. |
 | **Colours:** navy `#26374a` (primary buttons), red `#af3c43` (the heading bar and the leaf) | `index.css` (`--primary`, `--gc-accent`) | Canada.ca's palette. Colours aren't protected. |
@@ -54,7 +54,6 @@ and the [Canada.ca design rules](https://design.canada.ca/) apply. In the code:
 
 1. Replace `Logo` in `components/brand/Brand.tsx` with the official signature, and put the
    wordmark at the bottom right.
-2. Change `PRODUCT_NAME` (same file and `index.html`'s title), and remove the "Prototype"
-   label.
+2. Change `PRODUCT_NAME` (same file and `index.html`'s title).
 3. Replace the prototype disclaimer in `components/settings/SettingsDialog.tsx`.
 4. Make "Français" work: the app has to be fully bilingual.

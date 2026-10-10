@@ -329,8 +329,10 @@ export default function App({ transport }: { transport?: ChatTransport }) {
                 <PanelLeftOpen className="size-4" />
               </button>
             )}
-            {/* The sidebar shows the name when it's expanded. */}
-            <h1 className={cn('font-bold', sidebarExpanded && 'sr-only')}>
+            {/* On wide screens the sidebar carries the name, or just the logo when
+                collapsed, as in ChatGPT and Gemini; the header only names the app on
+                narrow screens. */}
+            <h1 className={cn('font-bold', wide && 'sr-only')}>
               {PRODUCT_NAME}
             </h1>
             <div className="ml-auto flex items-center gap-1">

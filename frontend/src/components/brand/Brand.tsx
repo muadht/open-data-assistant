@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 // The product's own identity. Deliberately not the Government of Canada signature or the
 // Canada wordmark: those are official marks for federal institutions only, and this is a
 // prototype. If it becomes an official Statistics Canada service, the official signature
-// replaces Logo here, and PRODUCT_NAME and the Prototype label change with it.
+// replaces Logo here, and PRODUCT_NAME changes with it.
 // See docs/visual-identity.md for what the UI may and may not use, and why.
 
 export const PRODUCT_NAME = 'Open Data Assistant'
@@ -20,20 +20,12 @@ export function Logo({ className }: { className?: string }) {
   )
 }
 
-/** Logo, name, and what it is: a prototype using Statistics Canada data. */
+/** Logo and name. */
 export function Brand() {
   return (
     <span className="flex min-w-0 items-center gap-2.5">
       <Logo />
-      <span className="min-w-0 leading-tight">
-        <span className="block truncate font-heading font-bold">
-          {PRODUCT_NAME}
-        </span>
-        <span className="block truncate text-xs text-muted-foreground">
-          <span className="font-medium text-foreground/70">Prototype</span> ·
-          StatCan data
-        </span>
-      </span>
+      <span className="truncate font-heading font-bold">{PRODUCT_NAME}</span>
     </span>
   )
 }
