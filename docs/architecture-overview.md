@@ -115,9 +115,13 @@ sequenceDiagram
     participant FE as Frontend
 
     ORCH-->>FE: stream carries both the answer text<br/>and the DataResult (series, units, refPer, flags)
-    FE->>FE: pass DataResult.series into the chart component
+    FE->>FE: chart recipes choose the chart(s)<br/>from the data's shape (line, map, bar)
     FE-->>FE: render chart client-side
 ```
+
+Which chart, if any, is decided in the frontend by code, never by the model: a fixed list of
+chart recipes looks at the data's shape (which dimensions vary, how many periods, which units).
+[charts.md](charts.md) has the detailed flow, the recipes and how to add one.
 
 There's no separate "generate a chart" round trip. The same `DataResult` object that backs the written answer is what the frontend charts — this is why the [data contract](mcp-tools-and-data-contract.md) insists on one standard shape: a chart and a chat answer built from two independently-fetched copies of "the same" data could disagree, especially around suppressed values or scalar factors.
 
