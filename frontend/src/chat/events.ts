@@ -56,12 +56,16 @@ export interface SessionEvent {
 export interface ToolCallEvent {
   call_id: string
   label: string
+  /** The tool's name, e.g. "get_data"; absent from older servers. */
+  tool?: string
 }
 
 export interface ToolResultEvent {
   call_id: string
   ok: boolean
   message?: string
+  /** One line on what the tool found, e.g. the top matching table; optional. */
+  detail?: string
 }
 
 export interface AnswerEvent {

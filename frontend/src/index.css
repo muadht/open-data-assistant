@@ -173,3 +173,34 @@
     @apply font-heading;
   }
 }
+
+/* A soft light sweeping across the text of a step that's running - the common way chat apps
+   show work in progress (e.g. AI Elements' Shimmer). Plain muted text when motion is reduced. */
+@utility shimmer-text {
+  background: linear-gradient(
+    90deg,
+    var(--muted-foreground) 35%,
+    var(--foreground) 50%,
+    var(--muted-foreground) 65%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: shimmer-text 2.2s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    background: none;
+    color: var(--muted-foreground);
+    animation: none;
+  }
+}
+
+@keyframes shimmer-text {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}

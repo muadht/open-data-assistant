@@ -74,11 +74,19 @@ A stream that closes without a terminal event was cut off; the frontend shows a 
 ### `tool_call` and `tool_result` (progress)
 
 ```json
-{ "call_id": "c3", "label": "Fetching data for Ontario, Alberta" }
-{ "call_id": "c3", "ok": true }
+{ "call_id": "c3", "label": "Fetching data for 2 series", "tool": "get_data" }
+{ "call_id": "c3", "ok": true, "detail": "Ontario, Alberta · 2026-08" }
 ```
 
 - `label` is written by the server in plain language, so the frontend just displays it.
+- `tool` (optional) on `tool_call` is the tool's name (`search_tables`, `get_table_structure`,
+  `find_members`, `get_data`), e.g. so the frontend can say "Writing the answer..." once data
+  has been fetched.
+- `detail` (optional) on a successful `tool_result` is one line on what the step found, from
+  the tool's own result, shown under the step: the top matching table
+  ("Top match: Labour force characteristics... (14-10-0287-01)"), the table's dimensions, the
+  members found, or what was fetched and for when ("Canada ... British Columbia x Men+, Women+ ·
+  2026-09").
 - `ok: false` means the tool call failed and the agent is retrying with different arguments
   (a normal part of a run, not an error to show the user). Optional `"message"` says why.
 - Purely for showing progress: the frontend must not need them to render the answer.

@@ -28,6 +28,7 @@ from ..agent.deps import AgentDeps
 from ..agent.outcomes import Answer, Clarification, Outcome, Unanswerable
 from ..agent.related import related_tables
 from ..agent.validator import fetched_data
+from ..mcp.schemas import DataResult, MemberCandidate, TableSearchResult, TableStructure
 from ..wds.client import WdsError, WdsMaintenanceWindow
 from .sessions import Session
 
@@ -89,7 +90,14 @@ async def chat_events(
                         if isinstance(event, FunctionToolCallEvent):
                             shown_calls.add(event.tool_call_id)
                             label = tool_label(event.part.tool_name, event.part.args_as_dict())
-                            yield sse("tool_call", {"call_id": event.tool_call_id, "label": label})
+                            yield sse(
+                                "tool_call",
+                                {
+                                    "call_id": event.tool_call_id,
+                                    "label": label,
+                                    "tool": event.part.tool_name,
+                                },
+                            )
                         elif (
                             isinstance(event, FunctionToolResultEvent)
                             and event.tool_call_id in shown_calls
@@ -120,7 +128,8 @@ def tool_label(tool_name: str, args: dict[str, Any]) -> str:
     """Plain-language progress for the user. The arguments are mostly IDs, so labels say
     what's happening rather than naming things the agent hasn't resolved yet."""
     if tool_name == "search_tables":
-        return "Searching StatCan tables"
+        query = str(args.get("query", "")).strip()
+        return f'Searching StatCan tables for "{query}"' if query else "Searching StatCan tables"
     if tool_name == "get_table_structure":
         return "Reading the table's structure"
     if tool_name == "find_members":
@@ -143,7 +152,66 @@ def tool_result(event: FunctionToolResultEvent) -> dict[str, Any]:
         content = event.part.content
         message = content if isinstance(content, str) else "Invalid arguments"
         return {"call_id": event.tool_call_id, "ok": False, "message": message}
-    return {"call_id": event.tool_call_id, "ok": True}
+    payload: dict[str, Any] = {"call_id": event.tool_call_id, "ok": True}
+    detail = tool_detail(event.part.tool_name, event.part.content)
+    if detail:
+        payload["detail"] = detail
+    return payload
+
+
+def tool_detail(tool_name: str, content: Any) -> str | None:
+    """One line on what a tool found, from its own result - shown under the step while the
+    agent works, so the user sees what it's looking at. Never fails a stream: anything
+    unexpected just means no detail."""
+    try:
+        if tool_name == "search_tables" and isinstance(content, TableSearchResult):
+            if not content.candidates:
+                return "No matching tables"
+            top = content.candidates[0]
+            return f"Top match: {top.title_en} ({table_number(top.product_id)})"
+        if tool_name == "get_table_structure" and isinstance(content, TableStructure):
+            dimensions = ", ".join(d.name_en for d in content.dimensions)
+            return f"{table_number(content.product_id)}: {dimensions}"
+        if tool_name == "find_members" and isinstance(content, list):
+            names = [m.name_en for m in content if isinstance(m, MemberCandidate)]
+            return _first_few(names) if names else "No match"
+        if tool_name == "get_data" and isinstance(content, list):
+            results = [r for r in content if isinstance(r, DataResult)]
+            return _data_detail(results) if results else None
+    except Exception:  # noqa: BLE001 - a detail is a nicety, never worth breaking the stream
+        logger.exception("No detail for %s", tool_name)
+    return None
+
+
+def table_number(product_id: int) -> str:
+    """StatCan's displayed table number, e.g. 14100287 -> 14-10-0287-01."""
+    s = str(product_id)
+    return f"{s[:2]}-{s[2:4]}-{s[4:]}-01"
+
+
+def _first_few(names: list[str], limit: int = 3) -> str:
+    shown = ", ".join(names[:limit])
+    return shown + (f" and {len(names) - limit} more" if len(names) > limit else "")
+
+
+def _data_detail(results: list[DataResult]) -> str:
+    """What was fetched: the members that differ between the series (e.g. "Newfoundland and
+    Labrador ... British Columbia x Men+, Women+"), and the periods."""
+    varying = [
+        values
+        for dimension in results[0].members
+        if len(values := list(dict.fromkeys(r.members[dimension] for r in results))) > 1
+    ]
+    parts = [
+        f"{values[0]} … {values[-1]}" if len(values) > 3 else ", ".join(values)
+        for values in varying
+    ]
+    what = " × ".join(parts) if parts else results[0].series_title_en.split(";")[0]
+    periods = sorted({p.ref_per for r in results for p in r.series})
+    if not periods:
+        return what
+    span = periods[0][:7] if len(periods) == 1 else f"{periods[0][:7]} to {periods[-1][:7]}"
+    return f"{what} · {span}"
 
 
 def terminal_event(

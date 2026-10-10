@@ -9,6 +9,9 @@ import type {
 export interface Step {
   callId: string
   label: string
+  tool?: string
+  /** One line on what the step found, shown under it (e.g. the top matching table). */
+  detail?: string
   /** undefined while running; false means it failed and the agent retried (not an error). */
   ok?: boolean
 }
@@ -131,14 +134,20 @@ function applyEvent(state: ChatState, event: ChatEvent): ChatState {
         ...m,
         steps: [
           ...m.steps,
-          { callId: event.data.call_id, label: event.data.label },
+          {
+            callId: event.data.call_id,
+            label: event.data.label,
+            tool: event.data.tool,
+          },
         ],
       }))
     case 'tool_result':
       return updateCurrent(state, (m) => ({
         ...m,
         steps: m.steps.map((s) =>
-          s.callId === event.data.call_id ? { ...s, ok: event.data.ok } : s,
+          s.callId === event.data.call_id
+            ? { ...s, ok: event.data.ok, detail: event.data.detail }
+            : s,
         ),
       }))
     case 'answer':
