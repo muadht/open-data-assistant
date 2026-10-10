@@ -1,13 +1,11 @@
-import { pointFlags } from './answerDetails'
-import type { DataPoint, DataResult } from './events'
-import { distinguishingNames, sharedMembers } from './seriesNames'
+import type { ProvinceCode } from './charts/provinces'
+import { shapesOf, RECIPES } from './charts/recipes'
+import type { DataResult } from './events'
 
 // When an answer gets a chart, and which kind, decided from the shape of its data alone -
 // the model never chooses or draws charts (docs/architecture-overview.md, "answer -> chart").
-//
-//   several periods, <= MAX_LINES series   -> line chart, one line per series
-//   one period each, or too many series    -> bar chart of each series' latest value
-//   one series, one period                 -> no chart (the answer states the number)
+// Each kind of chart is a recipe in charts/recipes.ts that says when it applies; an answer
+// gets every view that applies, best first, and the reader can switch between them.
 //
 // Series in different units never share a chart (no dual axes): one chart per unit.
 
@@ -42,75 +40,41 @@ export interface BarChartSpec {
   bars: (ChartSeries & ChartPoint & { refPer: string })[]
 }
 
-export type ChartSpec = LineChartSpec | BarChartSpec
+/** One value per province or territory, at one period (#82). */
+export interface MapChartSpec {
+  kind: 'map'
+  title: string
+  unit: string
+  refPer: string
+  /** Every province and territory, in StatCan's order: those the data doesn't cover have
+   * a null value and a "No data" flag, so they're never drawn as if they were zero. */
+  regions: (ChartPoint & {
+    code: ProvinceCode
+    name: string
+    decimals: number
+  })[]
+  /** Canada's own value, when the data has it, as a reference beside the map. */
+  national: (ChartPoint & { decimals: number }) | null
+}
 
-export function chartSpecs(results: DataResult[]): ChartSpec[] {
-  const byUnit = new Map<string, DataResult[]>()
-  for (const result of results) {
-    const unit = result.series[0]?.uom
-    if (unit === undefined) continue
-    byUnit.set(unit, [...(byUnit.get(unit) ?? []), result])
-  }
-  return [...byUnit].flatMap(([unit, group]) => {
-    const spec = specFor(unit, group)
-    return spec ? [spec] : []
+export type ChartSpec = LineChartSpec | BarChartSpec | MapChartSpec
+
+/** One chart per unit, with the views its data fits, best first. */
+export interface ChartGroup {
+  unit: string
+  views: ChartSpec[]
+}
+
+export function chartGroups(results: DataResult[]): ChartGroup[] {
+  return shapesOf(results).flatMap((shape) => {
+    const views = RECIPES.flatMap((recipe) => recipe(shape) ?? [])
+    return views.length ? [{ unit: shape.unit, views }] : []
   })
 }
 
-function specFor(unit: string, results: DataResult[]): ChartSpec | null {
-  const names = distinguishingNames(results)
-  const title = titleFor(results)
-  const longest = Math.max(...results.map((r) => r.series.length))
-
-  if (longest >= 2 && results.length <= MAX_LINES) {
-    const series = results.map((r, i) => ({
-      key: r.coordinate,
-      name: names[i],
-      color: `var(--series-${i + 1})`,
-      decimals: r.series[0].decimals,
-    }))
-    const periods = [
-      ...new Set(results.flatMap((r) => r.series.map((p) => p.ref_per))),
-    ].sort()
-    const rows = periods.map((refPer) => ({
-      refPer,
-      values: Object.fromEntries(
-        results.map((r) => {
-          const point = r.series.find((p) => p.ref_per === refPer)
-          return [r.coordinate, point && toChartPoint(point)]
-        }),
-      ),
-    }))
-    return { kind: 'line', title, unit, series, rows }
-  }
-
-  if (results.length >= 2) {
-    // Bars compare entities, so they share one colour; identity is on the axis labels.
-    const bars = results.map((r, i) => {
-      const latest = r.series.at(-1) as DataPoint
-      return {
-        key: r.coordinate,
-        name: names[i],
-        color: 'var(--series-1)',
-        decimals: latest.decimals,
-        refPer: latest.ref_per,
-        ...toChartPoint(latest),
-      }
-    })
-    return { kind: 'bar', title, unit, bars }
-  }
-
-  return null
-}
-
-function toChartPoint(point: DataPoint): ChartPoint {
-  return { value: point.value, flags: pointFlags(point, false) }
-}
-
-/** What every series in the chart has in common, e.g. "All-items" for a CPI comparison. */
-function titleFor(results: DataResult[]): string {
-  const shared = sharedMembers(results)
-  return shared.length ? shared.join(' · ') : results[0].title_en
+/** Each chart's default view. */
+export function chartSpecs(results: DataResult[]): ChartSpec[] {
+  return chartGroups(results).map((group) => group.views[0])
 }
 
 /** Period labels from the data itself: StatCan dates every period by its first day, so if

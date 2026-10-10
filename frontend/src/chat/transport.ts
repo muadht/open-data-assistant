@@ -31,6 +31,8 @@ const MOCK_ROUTES: [RegExp, string][] = [
   [/inflation/i, 'clarification'],
   [/census|quarter/i, 'unanswerable'],
   [/error|maintenance/i, 'error-wds'],
+  [/population/i, 'answer-population'],
+  [/provinc|territor|\bmap\b/i, 'answer-provinces'],
 ]
 
 export function pickMock(message: string): string {
