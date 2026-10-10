@@ -1,6 +1,7 @@
 import {
   ArrowUp,
   PanelLeftOpen,
+  Plus,
   Square,
   SquarePen,
   Table2,
@@ -254,21 +255,35 @@ export default function App({ transport }: { transport?: ChatTransport }) {
         onValueChange={setInput}
         isLoading={isStreaming}
         onSubmit={() => submit(input)}
-        // One row, text then the send button, rounded into a pill like Copilot's and
-        // ChatGPT's; longer text grows the box upward with the same corners.
-        className="flex items-end gap-2 rounded-[1.75rem] py-2 pr-2 pl-3"
+        // One row - add, text, send - rounded into a pill like Copilot's and ChatGPT's;
+        // longer text grows the box upward with the same corners. The text's line box is
+        // the buttons' height (36px), so a single line sits on their centre line.
+        className="flex items-end gap-1 rounded-[1.75rem] p-2"
       >
+        <PromptInputAction tooltip="Attachments are coming later">
+          {/* A placeholder where attachments will go; it does nothing yet. */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Add attachment"
+            aria-disabled
+            className="size-9 shrink-0 cursor-default rounded-full text-muted-foreground"
+          >
+            <Plus className="size-5" />
+          </Button>
+        </PromptInputAction>
         <PromptInputTextarea
           placeholder="Ask about Canadian statistics…"
           aria-label="Your question"
-          className="flex-1"
+          className="min-h-9 flex-1 px-1 py-1.5 text-base leading-6 md:text-base"
         />
-        <PromptInputActions className="shrink-0 pb-1">
+        <PromptInputActions className="shrink-0">
           {isStreaming ? (
             <PromptInputAction tooltip="Stop">
               <Button
                 size="icon"
-                className="rounded-full"
+                className="size-9 rounded-full"
                 onClick={stop}
                 aria-label="Stop"
               >
@@ -279,7 +294,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
             <PromptInputAction tooltip="Send">
               <Button
                 size="icon"
-                className="rounded-full"
+                className="size-9 rounded-full"
                 disabled={!input.trim()}
                 onClick={() => submit(input)}
                 aria-label="Send"
