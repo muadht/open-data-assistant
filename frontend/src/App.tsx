@@ -224,29 +224,28 @@ export default function App({ transport }: { transport?: ChatTransport }) {
   const prompt = (
     <div ref={inputAreaRef} className="space-y-2">
       {pinned && (
-        <div className="flex w-fit max-w-full items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
-          <Table2
-            className="size-4 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
+        // Kept small and quiet: just the table's name (the full title, number and what it
+        // means are in the tooltip and the accessible name), so it doesn't compete with the
+        // question being typed.
+        <div className="flex w-fit max-w-full items-center gap-1 pl-3 text-xs text-muted-foreground">
+          <Table2 className="size-3.5 shrink-0" aria-hidden />
           <button
             type="button"
             onClick={() => openTable(pinned.productId)}
-            title="View table details"
-            className="truncate hover:underline"
+            title={`Asking about: ${pinned.title} (${tableNumber(pinned.productId)}). Click for the table's details.`}
+            aria-label={`Asking about: ${pinned.title} (${tableNumber(pinned.productId)})`}
+            className="max-w-64 truncate rounded px-1 py-0.5 hover:bg-muted hover:text-foreground"
           >
-            Asking about: {pinned.title}{' '}
-            <span className="text-muted-foreground">
-              ({tableNumber(pinned.productId)})
-            </span>
+            {pinned.title}
           </button>
           <button
             type="button"
             onClick={() => setPinned(null)}
             aria-label="Stop asking about this table"
-            className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Stop asking about this table"
+            className="rounded p-0.5 hover:bg-muted hover:text-foreground"
           >
-            <X className="size-3.5" />
+            <X className="size-3" />
           </button>
         </div>
       )}

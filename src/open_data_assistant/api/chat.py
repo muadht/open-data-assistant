@@ -252,32 +252,32 @@ def error_payload(exc: Exception, session: Session) -> dict[str, Any]:
     if isinstance(exc, WdsMaintenanceWindow):
         return _error(
             "wds_unavailable",
-            "Statistics Canada's data service is updating (midnight to 8:30 AM ET). "
-            "Try again shortly.",
+            "Statistics Canada updates its data overnight, until 8:30 AM ET. Try again after that.",
         )
     if isinstance(exc, WdsError | httpx.HTTPError):
         logger.warning("WDS unavailable (session %s): %r", session.id, exc)
         return _error(
             "wds_unavailable",
-            "Couldn't reach Statistics Canada's data service. Try again in a moment.",
+            "I couldn't reach Statistics Canada's data service just now.",
         )
     if isinstance(exc, UnexpectedModelBehavior):
         logger.warning("Answer failed validation (session %s): %s", session.id, exc)
         return _error(
             "validation_failed",
-            "I couldn't put together an answer that passes the source and accuracy checks. "
-            "Try rephrasing the question.",
+            "I couldn't find an answer I could verify against the sources. "
+            "Try asking it a different way.",
         )
     if isinstance(exc, UsageLimitExceeded):
         return _error(
             "limit_exceeded",
-            "That question needed more steps than allowed. Try asking something more specific.",
+            "That question is broad for one answer. Try narrowing it, e.g. one province or a "
+            "shorter period.",
             retryable=False,
         )
     if isinstance(exc, TimeoutError):
-        return _error("timeout", "That took too long. Please try again.")
+        return _error("timeout", "I couldn't finish that answer.")
     logger.exception("Chat run failed (session %s)", session.id, exc_info=exc)
-    return _error("internal", "Something went wrong on our side. Please try again.")
+    return _error("internal", "I couldn't finish that answer.")
 
 
 def _error(code: str, message: str, *, retryable: bool = True) -> dict[str, Any]:

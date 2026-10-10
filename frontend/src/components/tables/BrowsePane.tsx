@@ -227,7 +227,7 @@ export function BrowsePane({
 
       <section aria-label="Results" className="min-h-0 flex-1 overflow-y-auto">
         {error && (
-          <p role="alert" className="p-4 text-sm text-destructive">
+          <p role="status" className="p-4 text-sm text-muted-foreground">
             {error}
           </p>
         )}

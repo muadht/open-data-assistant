@@ -139,7 +139,7 @@ The frontend can show `options` as buttons; clicking one sends its text as the n
 `error`: the run failed; nothing from it should be shown as an answer.
 
 ```json
-{ "message_id": "m7", "code": "wds_unavailable", "message": "Statistics Canada's data service is updating (midnight to 8:30 AM ET). Try again shortly.", "retryable": true }
+{ "message_id": "m7", "code": "wds_unavailable", "message": "Statistics Canada updates its data overnight, until 8:30 AM ET. Try again after that.", "retryable": true }
 ```
 
 | `code` | Cause | `retryable` |

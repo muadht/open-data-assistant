@@ -176,14 +176,16 @@ describe('App with mock streams', () => {
     expect(screen.getByText(/2016 and 2021 censuses/)).toBeTruthy()
   })
 
-  it('shows an error with a working "Try again"', async () => {
+  it('says a failure quietly, with a working "Try again"', async () => {
     renderApp()
     ask('show me an error')
-    const alert = await screen.findByRole('alert')
-    expect(alert.textContent).toMatch(/data service is updating/)
-    fireEvent.click(within(alert).getByRole('button', { name: /Try again/ }))
+    // A polite status in the reply's place, not an alarm.
+    const failure = await screen.findByRole('status')
+    expect(failure.textContent).toMatch(/updates its data overnight/)
+    expect(screen.queryByRole('alert')).toBeNull()
+    fireEvent.click(within(failure).getByRole('button', { name: /Try again/ }))
     // The question is sent again and gets its own reply.
-    await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2))
+    await waitFor(() => expect(screen.getAllByRole('status')).toHaveLength(2))
     expect(screen.getAllByText('show me an error')).toHaveLength(2)
   })
 

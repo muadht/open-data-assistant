@@ -1,5 +1,4 @@
 import {
-  AlertTriangle,
   ArrowRight,
   Check,
   Copy,
@@ -13,6 +12,7 @@ import type { AssistantMessage } from '@/chat/chatState'
 import { citations, linkCitations } from '@/chat/citations'
 import type { AnswerEvent } from '@/chat/events'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import {
   Message,
   MessageAction,
@@ -98,27 +98,23 @@ export function AssistantReply({
       )}
 
       {outcome?.kind === 'error' && (
-        <div
-          role="alert"
-          className="flex items-start justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3"
-        >
-          <p className="flex items-start gap-2">
-            <AlertTriangle
-              className="mt-0.5 size-4 shrink-0 text-destructive"
-              aria-hidden
-            />
+        // A failure is said quietly, in the reply's own place and voice, with a way to try
+        // again - not an alarm (as ChatGPT and Gemini do). Stopping is the user's own doing,
+        // so it's just noted.
+        <div role="status" className="space-y-1.5 text-muted-foreground">
+          <p className={cn(outcome.error.stopped && 'text-sm')}>
             {outcome.error.message}
           </p>
           {outcome.error.retryable && (
-            <Button
-              variant="outline"
-              size="sm"
+            <button
+              type="button"
               disabled={active}
               onClick={onRetry}
+              className="inline-flex items-center gap-1.5 rounded text-sm hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             >
-              <RotateCcw aria-hidden />
+              <RotateCcw className="size-3.5" aria-hidden />
               Try again
-            </Button>
+            </button>
           )}
         </div>
       )}

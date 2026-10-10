@@ -20,7 +20,13 @@ export type Outcome =
   | { kind: 'answer'; answer: AnswerEvent }
   | { kind: 'clarification'; clarification: ClarificationEvent }
   | { kind: 'unanswerable'; unanswerable: UnanswerableEvent }
-  | { kind: 'error'; error: Pick<ErrorEvent, 'message' | 'retryable'> }
+  | {
+      kind: 'error'
+      error: Pick<ErrorEvent, 'message' | 'retryable'> & {
+        /** The user pressed Stop: their action, not a failure, so shown as such. */
+        stopped?: boolean
+      }
+    }
 
 export interface UserMessage {
   role: 'user'
@@ -60,6 +66,7 @@ export type ChatAction =
       retryable: boolean
       /** Drop the session, e.g. after a 404 because the server restarted. */
       resetSession?: boolean
+      stopped?: boolean
     }
   | { type: 'end' }
   /** New chat: forget the conversation and its session. */
@@ -67,8 +74,7 @@ export type ChatAction =
   /** Switch to an earlier chat (#76): its messages, and its session to continue. */
   | { type: 'restore'; state: ChatState }
 
-export const CUT_OFF_MESSAGE =
-  'The connection was interrupted before an answer arrived. Please try again.'
+export const CUT_OFF_MESSAGE = "I couldn't finish that answer."
 
 export function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
@@ -94,7 +100,11 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           ...m,
           outcome: m.outcome ?? {
             kind: 'error',
-            error: { message: action.message, retryable: action.retryable },
+            error: {
+              message: action.message,
+              retryable: action.retryable,
+              stopped: action.stopped,
+            },
           },
         })),
         sessionId: action.resetSession ? null : state.sessionId,
