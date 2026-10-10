@@ -163,11 +163,24 @@ class WdsClient:
             fetched: list[dict[str, Any]] = self._request(
                 "POST", "/getCubeMetadata", json_body=[{"productId": pid} for pid in missing]
             )
+            succeeded = {
+                int(item["object"]["productId"]): item
+                for item in fetched
+                if item["status"] == "SUCCESS"
+            }
+            # WDS doesn't guarantee response order (live-verified for batched series lookups),
+            # and a FAILED item carries only a message - so successes are matched by
+            # productId and failures fill the remaining product IDs in order.
+            failed = iter(item for item in fetched if item["status"] != "SUCCESS")
             with self._cache_lock:
-                for pid, item in zip(missing, fetched, strict=True):
-                    items[pid] = item
-                    if item["status"] == "SUCCESS":
-                        self._cube_metadata[pid] = (now, item)
+                for pid in missing:
+                    if pid in succeeded:
+                        items[pid] = succeeded[pid]
+                        self._cube_metadata[pid] = (now, succeeded[pid])
+                    elif (failure := next(failed, None)) is not None:
+                        items[pid] = failure
+                    else:
+                        raise WdsError(f"getCubeMetadata returned no item for product {pid}")
         return [items[pid] for pid in product_ids]
 
     def get_code_sets(self) -> dict[str, Any]:

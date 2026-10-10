@@ -45,6 +45,7 @@ def test_census_table_is_flagged_from_product_id_prefix_not_wds(httpx_mock: HTTP
     this test deliberately reuses the non-Census cube_metadata fixture under a 9810-series
     product_id, to prove the flag isn't accidentally derived from the metadata content."""
     metadata = load_wds_fixture("cube_metadata")
+    metadata["body"][0]["object"]["productId"] = "98100001"
     code_sets = load_wds_fixture("code_sets")
     httpx_mock.add_response(
         method="POST", url=f"{BASE_URL}/getCubeMetadata", json=metadata["body"], status_code=200
