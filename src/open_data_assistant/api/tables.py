@@ -36,6 +36,9 @@ class FacetCounts(BaseModel):
             "the selected subject."
         )
     )
+    all_subjects: list[FacetValue] = Field(
+        description="Every subject at any level, with counts - for searching subjects by name."
+    )
     frequencies: list[FacetValue]
     active: int
     archived: int
@@ -136,6 +139,7 @@ def related_tables(request: Request, product_id: int) -> list[TableCandidate]:
 def _facet_counts(facets: Facets) -> FacetCounts:
     return FacetCounts(
         subjects=[FacetValue(value=f.value, count=f.count) for f in facets.subjects],
+        all_subjects=[FacetValue(value=f.value, count=f.count) for f in facets.all_subjects],
         frequencies=[FacetValue(value=f.value, count=f.count) for f in facets.frequencies],
         active=facets.active,
         archived=facets.archived,
