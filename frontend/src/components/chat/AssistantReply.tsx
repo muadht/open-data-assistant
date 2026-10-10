@@ -34,7 +34,7 @@ interface Props {
 export function AssistantReply({ message, active, onSend, onRetry }: Props) {
   const { outcome } = message
   return (
-    <Message className="flex-col items-stretch gap-3">
+    <Message className="flex-col items-stretch gap-5">
       <Steps steps={message.steps} active={active} />
 
       {outcome?.kind === 'answer' && (

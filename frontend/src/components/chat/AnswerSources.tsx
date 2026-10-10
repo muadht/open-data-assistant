@@ -65,7 +65,7 @@ export function AnswerSources({ citations }: { citations: Citations }) {
   return (
     <section
       aria-label="Sources"
-      className="space-y-2 text-sm text-muted-foreground"
+      className="space-y-3 pt-1 text-sm text-muted-foreground"
     >
       <h3 className="flex items-center gap-2 text-xs font-medium tracking-wide uppercase">
         Sources
@@ -76,16 +76,16 @@ export function AnswerSources({ citations }: { citations: Citations }) {
           </span>
         )}
       </h3>
-      <div className="space-y-3">
+      <div className="space-y-5">
         {groups.map((group) => (
-          <div key={group.table.productId} className="space-y-1">
+          <div key={group.table.productId} className="space-y-2">
             <a
               href={group.table.link}
               target="_blank"
               rel="noopener noreferrer"
               // Inline text, not flex: a long title wraps like a sentence, and the table
               // number stays together with the icon instead of breaking onto two lines.
-              className="text-foreground hover:underline"
+              className="leading-snug font-medium text-foreground hover:underline"
             >
               {group.table.title}{' '}
               <span className="whitespace-nowrap text-muted-foreground">
@@ -99,7 +99,7 @@ export function AnswerSources({ citations }: { citations: Citations }) {
             {group.shared.length > 0 && (
               <p className="text-xs">All series: {group.shared.join(' · ')}</p>
             )}
-            <ol className="space-y-0.5">
+            <ol className="space-y-1.5 pt-1">
               {group.sources.map((source) => (
                 <li
                   key={source.coordinate}
@@ -128,10 +128,10 @@ export function AnswerSources({ citations }: { citations: Citations }) {
             </ol>
             {group.footnotes.length > 0 && (
               <details>
-                <summary className="cursor-pointer text-xs">
+                <summary className="cursor-pointer pt-1 text-xs hover:text-foreground">
                   StatCan notes ({group.footnotes.length})
                 </summary>
-                <ul className="mt-1 list-disc space-y-1 pl-5 text-xs">
+                <ul className="mt-2 list-disc space-y-2 pl-5 text-xs leading-relaxed">
                   {group.footnotes.map((note) => (
                     <li key={note}>{note}</li>
                   ))}
