@@ -58,7 +58,7 @@ def _scripted_model(steps: list[Step]) -> FunctionModel:
 
 ONTARIO_ANSWER_ARGS: dict[str, Any] = {
     # Plain text: the app shows sources beneath the answer, and URLs are rejected (#11).
-    "text": "The unemployment rate in Ontario was 6.9% in August 2026, seasonally adjusted.",
+    "text": "The unemployment rate in Ontario was 6.9% [1] in August 2026, seasonally adjusted.",
     "values": [{"coordinate": "7.7.1.1.1.1.0.0.0.0", "ref_per": "2026-08-01", "value": 6.9}],
 }
 ONTARIO_ANSWER: Step = ("final_result_Answer", ONTARIO_ANSWER_ARGS)
@@ -123,7 +123,7 @@ def test_multi_turn_conversation_threads_history(httpx_mock: HTTPXMock) -> None:
         (
             "final_result_Answer",
             {
-                "text": "That 6.9% for August 2026 came from Statistics Canada's Labour "
+                "text": "That 6.9% [1] for August 2026 came from Statistics Canada's Labour "
                 "Force Survey table.",
                 "values": ONTARIO_ANSWER_ARGS["values"],
             },
@@ -299,7 +299,7 @@ def test_end_to_end_scalar_factor_question(httpx_mock: HTTPXMock) -> None:
         (
             "final_result_Answer",
             {
-                "text": "Canada's GDP was about $3.44 trillion in Q2 2026.",
+                "text": "Canada's GDP was about $3.44 trillion [1] in Q2 2026.",
                 "values": [
                     {
                         "coordinate": "1.2.1.30.0.0.0.0.0.0",
@@ -343,7 +343,7 @@ def test_end_to_end_census_question_has_no_vector_id(httpx_mock: HTTPXMock) -> N
         (
             "final_result_Answer",
             {
-                "text": "Ontario's population in the 2021 Census was 14,223,942.",
+                "text": "Ontario's population in the 2021 Census was 14,223,942 [1].",
                 "values": [
                     {
                         "coordinate": "7.1.0.0.0.0.0.0.0.0",

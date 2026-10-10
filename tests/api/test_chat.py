@@ -260,7 +260,7 @@ def test_validator_giving_up_becomes_validation_failed(httpx_mock: HTTPXMock) ->
     _mock_ontario(httpx_mock)
     undated: Step = (
         "final_result_Answer",
-        {**ONTARIO_ANSWER_ARGS, "text": "Ontario's unemployment rate is 6.9%."},
+        {**ONTARIO_ANSWER_ARGS, "text": "Ontario's unemployment rate is 6.9% [1]."},
     )
     with _client([ONTARIO_DATA, undated, undated, undated]) as client:
         events = _events(client, "Ontario unemployment")

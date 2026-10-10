@@ -26,6 +26,7 @@ from .deps import AgentDeps
 from .outcomes import Answer, Outcome
 
 _URL = re.compile(r"https?://", re.IGNORECASE)
+_MARKER = re.compile(r"\[(\d+)\]")
 
 
 def validate_outcome(ctx: RunContext[AgentDeps], outcome: Outcome) -> Outcome:
@@ -47,6 +48,7 @@ def _validate_answer(answer: Answer, fetched: dict[str, DataResult]) -> None:
             "Remove the URLs from the answer text: the app shows each series' source link "
             "beneath the answer."
         )
+    problems.extend(_citation_problems(answer))
     for used in answer.values:
         result = fetched.get(used.coordinate)
         point = _point(result, used.ref_per) if result else None
@@ -110,3 +112,27 @@ def _as_results(content: Any) -> list[DataResult]:
     if not isinstance(content, list):
         return []
     return [r if isinstance(r, DataResult) else DataResult.model_validate(r) for r in content]
+
+
+def _citation_problems(answer: Answer) -> list[str]:
+    """Each series the answer uses is cited once, with a marker [n] after its first mention,
+    where n is the position in `values` (1-based) of any value from that series. The app
+    turns markers into links to the sources (#63). Citing every number was too much."""
+    cited = {int(n) for n in _MARKER.findall(answer.text)}
+    count = len(answer.values)
+    problems = [
+        f"Citation marker [{n}] doesn't match any value - there are {count} in `values`."
+        for n in sorted(cited)
+        if not 1 <= n <= count
+    ]
+    cited_series = {answer.values[n - 1].coordinate for n in cited if 1 <= n <= count}
+    first_value_of: dict[str, int] = {}
+    for i, value in enumerate(answer.values, start=1):
+        first_value_of.setdefault(value.coordinate, i)
+    uncited = [i for coordinate, i in first_value_of.items() if coordinate not in cited_series]
+    if uncited:
+        problems.append(
+            "Cite each series once, after its first mention - e.g. "
+            f"{', '.join(f'[{n}]' for n in uncited)} for the series not cited yet."
+        )
+    return problems

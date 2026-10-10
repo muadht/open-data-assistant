@@ -1,104 +1,156 @@
 import { AlertTriangle, ExternalLink } from 'lucide-react'
-import { useState } from 'react'
-import { answerDetails, type SeriesDetails } from '@/chat/answerDetails'
-import type { AnswerEvent } from '@/chat/events'
-import { cn } from '@/lib/utils'
+import {
+  formatPeriods,
+  type CitedSource,
+  type Citations,
+} from '@/chat/citations'
+import { tableNumber } from '@/chat/tables'
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card'
 
-/** A citation chip per series an answer used; clicking one shows its reference period,
- * release date, quality flags and StatCan's notes (docs/mvp-scope.md, trust rules 1-3).
- * Quality flags also show on the chip itself, so they're visible without expanding. */
-export function AnswerSources({ answer }: { answer: AnswerEvent }) {
-  const series = answerDetails(answer)
-  const [open, setOpen] = useState<string | null>(null)
-  const selected = series.find((s) => s.coordinate === open)
-
+/** A numbered citation in the answer text: a small superscript that links to the source and
+ * shows it on hover. Its accessible name carries the same details for keyboard and
+ * screen-reader users. */
+export function CitationMarker({ source }: { source: CitedSource }) {
   return (
-    <section aria-label="Sources" className="space-y-2 text-sm">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground">Sources</span>
-        {series.map((s) => (
-          <button
-            key={s.coordinate}
-            type="button"
-            aria-expanded={open === s.coordinate}
-            onClick={() => setOpen(open === s.coordinate ? null : s.coordinate)}
-            className={cn(
-              'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 hover:bg-muted',
-              open === s.coordinate && 'bg-muted',
-              s.flags.length > 0 &&
-                'border-amber-400 text-amber-800 dark:text-amber-300',
+    <HoverCard openDelay={150} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <a
+          href={source.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Source ${source.number}: ${source.shortName}, ${formatPeriods(source.periodsUsed)}${source.flags.length ? `, flagged: ${source.flags.join('; ')}` : ''}`}
+          className={
+            'ml-0.5 inline-flex min-w-4 -translate-y-1 items-center justify-center rounded px-1 align-baseline text-[0.65rem] leading-4 font-medium no-underline hover:bg-foreground hover:text-background ' +
+            (source.flags.length
+              ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200'
+              : 'bg-muted text-muted-foreground')
+          }
+        >
+          {source.number}
+        </a>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-80 space-y-1 text-sm">
+        <SourceSummary source={source} />
+      </HoverCardContent>
+    </HoverCard>
+  )
+}
+
+function SourceSummary({ source }: { source: CitedSource }) {
+  return (
+    <>
+      <p className="font-medium">{source.shortName}</p>
+      <p className="text-xs text-muted-foreground">
+        {source.table.title} ({tableNumber(source.table.productId)})
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Reference period {formatPeriods(source.periodsUsed)} · released{' '}
+        {source.releasedOn.join(', ')}
+      </p>
+      <Flags flags={source.flags} />
+    </>
+  )
+}
+
+/** All of an answer's sources, always visible: a numbered list grouped by table, with the
+ * shared members and StatCan's notes once per table. A flag count in the heading makes
+ * flagged sources stand out (trust rule 3). */
+export function AnswerSources({ citations }: { citations: Citations }) {
+  const { sources, groups, flaggedCount } = citations
+  if (!sources.length) return null
+  return (
+    <section
+      aria-label="Sources"
+      className="space-y-3 pt-1 text-sm text-muted-foreground"
+    >
+      <h3 className="flex items-center gap-2 text-xs font-medium tracking-wide uppercase">
+        Sources
+        {flaggedCount > 0 && (
+          <span className="inline-flex items-center gap-1 font-normal tracking-normal text-amber-700 normal-case dark:text-amber-400">
+            <AlertTriangle className="size-3.5" aria-hidden />
+            {flaggedCount} flagged
+          </span>
+        )}
+      </h3>
+      <div className="space-y-5">
+        {groups.map((group) => (
+          <div key={group.table.productId} className="space-y-2">
+            <a
+              href={group.table.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              // Inline text, not flex: a long title wraps like a sentence, and the table
+              // number stays together with the icon instead of breaking onto two lines.
+              className="leading-snug font-medium text-foreground hover:underline"
+            >
+              {group.table.title}{' '}
+              <span className="whitespace-nowrap text-muted-foreground">
+                ({tableNumber(group.table.productId)})
+                <ExternalLink
+                  className="ml-1 inline size-3 align-baseline"
+                  aria-hidden
+                />
+              </span>
+            </a>
+            {group.shared.length > 0 && (
+              <p className="text-xs">All series: {group.shared.join(' · ')}</p>
             )}
-          >
-            {s.flags.length > 0 && (
-              <AlertTriangle
-                className="size-3.5"
-                aria-label="Has quality flags"
-              />
+            <ol className="space-y-1.5 pt-1">
+              {group.sources.map((source) => (
+                <li
+                  key={source.coordinate}
+                  className="flex items-baseline gap-2"
+                >
+                  <span className="w-5 shrink-0 text-right tabular-nums">
+                    {source.number}.
+                  </span>
+                  <span className="min-w-0">
+                    <a
+                      href={source.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-foreground hover:underline"
+                    >
+                      {source.shortName}
+                    </a>
+                    <span className="text-xs">
+                      {source.vectorId !== null && ` · v${source.vectorId}`} ·{' '}
+                      {formatPeriods(source.periodsUsed)}
+                    </span>
+                    <Flags flags={source.flags} />
+                  </span>
+                </li>
+              ))}
+            </ol>
+            {group.footnotes.length > 0 && (
+              <details>
+                <summary className="cursor-pointer pt-1 text-xs hover:text-foreground">
+                  StatCan notes ({group.footnotes.length})
+                </summary>
+                <ul className="mt-2 list-disc space-y-2 pl-5 text-xs leading-relaxed">
+                  {group.footnotes.map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              </details>
             )}
-            {s.name}
-            {s.vectorId !== null && (
-              <span className="text-muted-foreground">v{s.vectorId}</span>
-            )}
-          </button>
+          </div>
         ))}
       </div>
-      {selected && <SourceDetails series={selected} />}
     </section>
   )
 }
 
-function SourceDetails({ series: s }: { series: SeriesDetails }) {
+function Flags({ flags }: { flags: string[] }) {
+  if (!flags.length) return null
   return (
-    <div className="space-y-2 rounded-lg border bg-card p-3">
-      <a
-        href={s.link}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 font-medium underline underline-offset-2"
-      >
-        {s.name}
-        {s.vectorId !== null && ` (v${s.vectorId})`}
-        <ExternalLink className="size-3" aria-hidden />
-      </a>
-      <p className="text-muted-foreground">
-        Statistics Canada, table{' '}
-        <a
-          href={s.table.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline underline-offset-2"
-        >
-          {s.table.title} ({s.table.productId})
-        </a>
-      </p>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 text-muted-foreground">
-        <dt>Reference period</dt>
-        <dd>{s.periodsUsed.join(', ')}</dd>
-        <dt>Released</dt>
-        <dd>{s.releasedOn.join(', ')}</dd>
-        <dt>Quality flags</dt>
-        <dd>
-          {s.flags.length ? (
-            <span className="text-amber-700 dark:text-amber-400">
-              {s.flags.join('; ')}
-            </span>
-          ) : (
-            'None'
-          )}
-        </dd>
-      </dl>
-      {s.footnotes.length > 0 && (
-        <details className="text-muted-foreground">
-          <summary className="cursor-pointer">
-            StatCan notes ({s.footnotes.length})
-          </summary>
-          <ul className="mt-1 list-disc space-y-1 pl-5">
-            {s.footnotes.map((note) => (
-              <li key={note}>{note}</li>
-            ))}
-          </ul>
-        </details>
-      )}
-    </div>
+    <span className="mt-0.5 flex items-start gap-1 text-xs text-amber-700 dark:text-amber-400">
+      <AlertTriangle className="mt-0.5 size-3 shrink-0" aria-hidden />
+      {flags.join('; ')}
+    </span>
   )
 }

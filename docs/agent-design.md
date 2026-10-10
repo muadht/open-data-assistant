@@ -77,6 +77,7 @@ budget (2); after that the run fails visibly rather than returning an unchecked 
 | Check | Rule |
 |---|---|
 | Every number in the answer appears in a data-bearing tool result from this conversation | 5 |
+| Every series the answer uses is cited once with a marker `[n]` (a position in `values`), and every marker points at a value (#63) | 1 |
 | (Not checked in the text: the chat endpoint sends every used `DataResult` with the answer and the app shows each one's source beneath it - see `AGENT_SYSTEM_PROMPT` in `agent/system_prompt.py`). URLs in the answer text are rejected, so the text stays plain | 1 |
 | Reference period stated | 2 |
 | Non-normal status / symbol on a used data point is mentioned | 3 |

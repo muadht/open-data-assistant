@@ -23,6 +23,7 @@ from tests.agent.test_agent import (
     _mock,
     _scripted_model,
 )
+from tests.fixtures.wds import load_wds_fixture
 
 ONTARIO_SELECTIONS = {1: 7, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
 FETCH_ONTARIO: Step = (
@@ -119,7 +120,7 @@ def test_answer_with_no_values_is_sent_back() -> None:
 
 
 def test_untraceable_value_is_sent_back_then_corrected(httpx_mock: HTTPXMock) -> None:
-    wrong = _answer(ONTARIO_ANSWER_ARGS["text"].replace("6.9%", "7.0%"), value=7.0)
+    wrong = _answer(ONTARIO_ANSWER_ARGS["text"].replace("6.9% [1]", "7.0% [1]"), value=7.0)
     result = _run(httpx_mock, [FETCH_ONTARIO, wrong, ONTARIO_ANSWER])
 
     assert isinstance(result.output, Answer)
@@ -131,7 +132,7 @@ def test_untraceable_value_is_sent_back_then_corrected(httpx_mock: HTTPXMock) ->
 def test_a_plain_answer_without_links_passes(httpx_mock: HTTPXMock) -> None:
     """Sources are shown by the app from the answer's data, so the text needn't link them
     (APP_INSTRUCTIONS); the value is still checked against fetched data."""
-    plain = _answer("The unemployment rate in Ontario was 6.9% in August 2026.")
+    plain = _answer("The unemployment rate in Ontario was 6.9% [1] in August 2026.")
     result = _run(httpx_mock, [FETCH_ONTARIO, plain])
 
     assert isinstance(result.output, Answer)
@@ -142,7 +143,7 @@ def test_urls_in_the_text_are_sent_back(httpx_mock: HTTPXMock) -> None:
     """The app shows each source beneath the answer, so links in the text are clutter -
     rejected in code, whatever the prompt does (#11)."""
     linked = _answer(
-        "The unemployment rate in Ontario was 6.9% in August 2026 "
+        "The unemployment rate in Ontario was 6.9% [1] in August 2026 "
         "([v2063949](https://www150.statcan.gc.ca/t1/tbl1/en/sbv.action?vectorNumbers=v2063949))."
     )
     result = _run(httpx_mock, [FETCH_ONTARIO, linked, ONTARIO_ANSWER])
@@ -152,8 +153,65 @@ def test_urls_in_the_text_are_sent_back(httpx_mock: HTTPXMock) -> None:
     assert "Remove the URLs" in reason
 
 
+def test_citation_markers_must_match_the_values(httpx_mock: HTTPXMock) -> None:
+    """Markers are [n], a position in `values` (#63): an unknown marker and an uncited
+    series are both sent back."""
+    miscited = _answer("The unemployment rate in Ontario was 6.9% [2] in August 2026.")
+    result = _run(httpx_mock, [FETCH_ONTARIO, miscited, ONTARIO_ANSWER])
+
+    assert isinstance(result.output, Answer)
+    [reason] = _retry_reasons(result.all_messages())
+    assert "Citation marker [2] doesn't match any value - there are 1" in reason
+    assert "Cite each series once" in reason
+    assert "[1] for the series not cited yet" in reason
+
+
+def test_one_marker_per_series_is_enough(httpx_mock: HTTPXMock) -> None:
+    """Two numbers from the same series need only one citation, not one each."""
+    _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
+    _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
+    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
+    httpx_mock.add_response(
+        method="GET",
+        url=(
+            "https://www150.statcan.gc.ca/t1/wds/rest/getDataFromVectorByReferencePeriodRange"
+            "?vectorIds=2063949&startRefPeriod=2019-01-01&endReferencePeriod=2024-01-01"
+        ),
+        json=load_wds_fixture("range_data_point")["body"],
+    )
+    coordinate = "7.7.1.1.1.1.0.0.0.0"
+    steps: list[Step] = [
+        (
+            "get_data",
+            {
+                "product_id": 14100287,
+                "selections": ONTARIO_SELECTIONS,
+                "period": {"type": "range", "start": "2019-01-01", "end": "2024-01-01"},
+            },
+        ),
+        (
+            "final_result_Answer",
+            {
+                "text": "Ontario's unemployment rate was 5.6% [1] in January 2019 and 6.1% in "
+                "January 2024.",
+                "values": [
+                    {"coordinate": coordinate, "ref_per": "2019-01-01", "value": 5.6},
+                    {"coordinate": coordinate, "ref_per": "2024-01-01", "value": 6.1},
+                ],
+            },
+        ),
+    ]
+    agent = build_agent(_scripted_model(steps))
+    deps = _deps()
+    with deps.wds_client:
+        result = agent.run_sync("Ontario unemployment, 2019 vs 2024", deps=deps)
+
+    assert isinstance(result.output, Answer)
+    assert _retry_reasons(result.all_messages()) == []
+
+
 def test_missing_reference_period_is_sent_back(httpx_mock: HTTPXMock) -> None:
-    undated = _answer("The unemployment rate in Ontario is 6.9%.")
+    undated = _answer("The unemployment rate in Ontario is 6.9% [1].")
     result = _run(httpx_mock, [FETCH_ONTARIO, undated, ONTARIO_ANSWER])
 
     [reason] = _retry_reasons(result.all_messages())
@@ -178,14 +236,14 @@ def test_suppressed_value_must_be_named(httpx_mock: HTTPXMock) -> None:
         (
             "final_result_Answer",
             {
-                "text": "No value is available for June 2026.",
+                "text": "No value [1] is available for June 2026.",
                 "values": [value],
             },
         ),
         (
             "final_result_Answer",
             {
-                "text": "The June 2026 value is suppressed: StatCan flags it as too "
+                "text": "The June 2026 value [1] is suppressed: StatCan flags it as too "
                 "unreliable to be published.",
                 "values": [value],
             },
@@ -203,7 +261,7 @@ def test_suppressed_value_must_be_named(httpx_mock: HTTPXMock) -> None:
 
 
 def test_retry_budget_exhausted_fails_visibly(httpx_mock: HTTPXMock) -> None:
-    undated = _answer("The unemployment rate in Ontario is 6.9%.")
+    undated = _answer("The unemployment rate in Ontario is 6.9% [1].")
     with pytest.raises(UnexpectedModelBehavior, match="Exceeded maximum output retries"):
         _run(httpx_mock, [FETCH_ONTARIO, undated, undated, undated])
 
