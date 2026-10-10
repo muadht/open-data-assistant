@@ -1,0 +1,28 @@
+{
+  "description": "getDataFromCubePidCoordAndLatestNPeriods for a coordinate that doesn't exist (geography member 99 isn't a member of 14100287). Unlike getSeriesInfoFromCubePidCoord (nonexistent_coordinate.json: SUCCESS with empty fields), this endpoint answers status FAILED, responseStatusCode 2, vectorId 0, no data points.",
+  "captured_at": "2026-10-10T21:00:29Z",
+  "source": "live",
+  "request": {
+    "method": "getDataFromCubePidCoordAndLatestNPeriods",
+    "body": [
+      {
+        "productId": 14100287,
+        "coordinate": "99.7.1.1.1.1.0.0.0.0",
+        "latestN": 1
+      }
+    ]
+  },
+  "http_status": 200,
+  "body": [
+    {
+      "status": "FAILED",
+      "object": {
+        "responseStatusCode": 2,
+        "productId": 14100287,
+        "coordinate": "99.7.1.1.1.1.0.0.0.0",
+        "vectorId": 0,
+        "vectorDataPoint": []
+      }
+    }
+  ]
+}

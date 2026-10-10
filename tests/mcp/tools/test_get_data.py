@@ -1,6 +1,11 @@
 """Tests for the get_data MCP tool (ticket #5), against the fixtures from #1. Cross-checks
 expected values against docs/question-catalogue-eval.xlsx rows 1 (normal), 5 (range), and 9
 (scalar factor) - see each fixture's description for exactly which row it matches.
+
+A latestN query fetches by coordinate (getDataFromCubePidCoordAndLatestNPeriods, #88). That
+endpoint's items and data points have exactly the shape of getDataFromVectorsAndLatestNPeriods'
+(live-verified 2026-10-10, see coord_data_point.json), so the data fixtures recorded from the
+vector endpoint stand in for its responses here.
 """
 
 from __future__ import annotations
@@ -9,7 +14,7 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from open_data_assistant.mcp.schemas import LatestNPeriod, RangePeriod
-from open_data_assistant.mcp.tools.get_data import get_data
+from open_data_assistant.mcp.tools.get_data import _build_coordinate, _expand_selections, get_data
 from open_data_assistant.wds.client import BASE_URL, WdsClient
 from tests.fixtures.wds import load_wds_fixture
 
@@ -26,8 +31,7 @@ def _mock(httpx_mock: HTTPXMock, method: str, path: str, fixture_name: str, url:
 
 def test_normal_latest_n_fetch(httpx_mock: HTTPXMock) -> None:
     _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "normal_data_point")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "normal_data_point")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
 
     selections = {1: 7, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
@@ -104,7 +108,6 @@ def test_range_fetch_requires_a_vector_id(httpx_mock: HTTPXMock) -> None:
 
 def test_census_table_latest_n_fetch_has_no_vector_id(httpx_mock: HTTPXMock) -> None:
     _mock(httpx_mock, "POST", "getCubeMetadata", "census_cube_metadata")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "census_series_info")
     _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "census_data_point")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
 
@@ -126,8 +129,7 @@ def test_footnotes_are_only_those_for_the_table_its_dimensions_and_the_selected_
     and the unemployment-rate definition. Footnotes on other members (e.g. the trend-cycle
     data type, the population characteristic) don't."""
     _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "normal_data_point")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "normal_data_point")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
 
     selections = {1: 7, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
@@ -145,7 +147,6 @@ def test_census_footnotes_are_deduplicated_and_stripped_of_html(httpx_mock: HTTP
     """WDS repeats footnote 2 once per linked member and footnote 1 is HTML (see the
     census_cube_metadata fixture's description)."""
     _mock(httpx_mock, "POST", "getCubeMetadata", "census_cube_metadata")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "census_series_info")
     _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "census_data_point")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
 
@@ -174,20 +175,38 @@ def test_census_table_range_fetch_raises_a_clear_error(httpx_mock: HTTPXMock) ->
 
 
 def test_nonexistent_coordinate_raises_a_clear_error(httpx_mock: HTTPXMock) -> None:
+    """By coordinate, WDS answers FAILED for a series that doesn't exist."""
     _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "nonexistent_coordinate")
+    _mock(
+        httpx_mock,
+        "POST",
+        "getDataFromCubePidCoordAndLatestNPeriods",
+        "nonexistent_coordinate_data",
+    )
 
     selections = {1: 99, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
     with WdsClient() as client, pytest.raises(ValueError, match="No series exists"):
         get_data(client, 14100287, selections, LatestNPeriod(n=1))
 
 
+def test_nonexistent_coordinate_in_a_range_query_raises_a_clear_error(
+    httpx_mock: HTTPXMock,
+) -> None:
+    """A range query resolves vectors first, where a missing series is SUCCESS with no title."""
+    _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
+    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "nonexistent_coordinate")
+
+    selections = {1: 99, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
+    period = RangePeriod(start="2019-01-01", end="2024-01-01")
+    with WdsClient() as client, pytest.raises(ValueError, match="No series exists"):
+        get_data(client, 14100287, selections, period)
+
+
 def test_scalar_factor_is_applied(httpx_mock: HTTPXMock) -> None:
     """GDP: raw value 3437720 with scalarFactorCode 6 (millions) -> ~$3.44 trillion, not
     3,437,720. Matches question-catalogue-eval.xlsx row 9."""
     _mock(httpx_mock, "POST", "getCubeMetadata", "gdp_cube_metadata")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "gdp_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "gdp_data_point")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "gdp_data_point")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
 
     selections = {1: 1, 2: 2, 3: 1, 4: 30}
@@ -205,8 +224,7 @@ def test_scalar_factor_is_applied(httpx_mock: HTTPXMock) -> None:
 
 def test_suppressed_value_is_kept_in_series_with_a_null_value(httpx_mock: HTTPXMock) -> None:
     _mock(httpx_mock, "POST", "getCubeMetadata", "suppressed_cube_metadata")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "suppressed_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "suppressed_value")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "suppressed_value")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
 
     selections = {1: 1, 2: 1, 3: 1, 4: 1}
@@ -220,11 +238,10 @@ def test_suppressed_value_is_kept_in_series_with_a_null_value(httpx_mock: HTTPXM
 
 
 def test_several_members_are_fetched_in_one_batched_request(httpx_mock: HTTPXMock) -> None:
-    """Alberta and Ontario in one call: one series lookup and one data request, results in
-    the order requested even though WDS returns the data in the opposite order."""
+    """Alberta and Ontario in one call: metadata, one data request and the code sets - no
+    separate vector lookup - with each series' vector ID taken from the data response."""
     _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "batched_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "batched_data_point")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "coord_data_point")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
 
     selections: dict[int, int | list[int]] = {1: [10, 7], 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
@@ -235,19 +252,33 @@ def test_several_members_are_fetched_in_one_batched_request(httpx_mock: HTTPXMoc
     assert alberta.coordinate == "10.7.1.1.1.1.0.0.0.0"
     assert alberta.vector_id == 2064516
     assert alberta.series[0].value == 6.4
+    assert alberta.series[0].uom == "Percent"
+    assert alberta.series_title_en == (
+        "Alberta;Unemployment rate;Total - Gender;15 years and over;Estimate;Seasonally adjusted"
+    )
     assert ontario.members["Geography"] == "Ontario"
     assert ontario.vector_id == 2063949
     assert ontario.series[0].value == 7.0
-    assert len(httpx_mock.get_requests()) == 4
+    assert [r.url.path.rsplit("/", 1)[-1] for r in httpx_mock.get_requests()] == [
+        "getCubeMetadata",
+        "getDataFromCubePidCoordAndLatestNPeriods",
+        "getCodeSets",
+    ]
 
 
-def test_only_one_dimension_may_list_several_members(httpx_mock: HTTPXMock) -> None:
-    selections: dict[int, int | list[int]] = {1: [10, 7], 2: [7, 8], 3: 1, 4: 1, 5: 1, 6: 1}
-    with WdsClient() as client, pytest.raises(ValueError, match="Only one dimension"):
-        get_data(client, 14100287, selections, LatestNPeriod(n=1))
+def test_several_dimensions_may_list_members_and_every_combination_is_fetched() -> None:
+    """E.g. provinces x sex: one call, one series per combination, in the order given."""
+    expanded = _expand_selections({1: [10, 7], 2: 7, 3: [2, 3]})
+    assert [_build_coordinate(s) for s in expanded] == [
+        "10.7.2.0.0.0.0.0.0.0",
+        "10.7.3.0.0.0.0.0.0.0",
+        "7.7.2.0.0.0.0.0.0.0",
+        "7.7.3.0.0.0.0.0.0.0",
+    ]
 
 
-def test_too_many_members_is_rejected_before_calling_wds(httpx_mock: HTTPXMock) -> None:
-    selections: dict[int, int | list[int]] = {1: list(range(1, 22)), 2: 7}
-    with WdsClient() as client, pytest.raises(ValueError, match="at most 20 series"):
+def test_too_many_series_is_rejected_before_calling_wds(httpx_mock: HTTPXMock) -> None:
+    """The cap counts combinations: 11 provinces x 10 age groups is 110 series."""
+    selections: dict[int, int | list[int]] = {1: list(range(1, 12)), 2: 7, 4: list(range(1, 11))}
+    with WdsClient() as client, pytest.raises(ValueError, match="110 series.*at most 100"):
         get_data(client, 14100287, selections, LatestNPeriod(n=1))

@@ -37,6 +37,8 @@ FIXTURE_NAMES = (
     "suppressed_cube_metadata",
     "batched_series_info",
     "batched_data_point",
+    "coord_data_point",
+    "nonexistent_coordinate_data",
 )
 
 

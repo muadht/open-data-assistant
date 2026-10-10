@@ -105,8 +105,7 @@ def test_multi_turn_conversation_threads_history(httpx_mock: HTTPXMock) -> None:
     # WdsClient caches them, so each is requested once.
     _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "normal_data_point")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "normal_data_point")
 
     selections = {1: 7, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
     steps: list[Step] = [
@@ -153,8 +152,7 @@ def test_multi_turn_conversation_threads_history(httpx_mock: HTTPXMock) -> None:
 def test_invalid_tool_args_trigger_a_retry_not_a_crash(httpx_mock: HTTPXMock) -> None:
     _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "normal_data_point")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "normal_data_point")
 
     selections = {1: 7, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
     steps: list[Step] = [
@@ -194,11 +192,15 @@ def test_business_rule_error_triggers_a_retry_not_a_crash(httpx_mock: HTTPXMock)
     see agent/tools.py's _retry_on_value_error."""
     _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "nonexistent_coordinate")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "normal_data_point")
+    _mock(
+        httpx_mock,
+        "POST",
+        "getDataFromCubePidCoordAndLatestNPeriods",
+        "nonexistent_coordinate_data",
+    )
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "normal_data_point")
 
-    # Geography member 99 doesn't exist on this table (see nonexistent_coordinate.json) -
+    # Geography member 99 doesn't exist on this table (see nonexistent_coordinate_data.json) -
     # the agent should recover by correcting it to the real Ontario member (7).
     bad_selections = {1: 99, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
     good_selections = {1: 7, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
@@ -245,8 +247,7 @@ def test_end_to_end_normal_question(httpx_mock: HTTPXMock) -> None:
     # them getCodeSets), but the shared WdsClient caches both, so each is requested once.
     _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "normal_data_point")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "normal_data_point")
 
     selections = {1: 7, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
     steps: list[Step] = [
@@ -283,8 +284,7 @@ def test_end_to_end_scalar_factor_question(httpx_mock: HTTPXMock) -> None:
     anyway - this test only exercises get_data's own routing."""
     _mock(httpx_mock, "POST", "getCubeMetadata", "gdp_cube_metadata")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "gdp_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "gdp_data_point")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "gdp_data_point")
 
     selections = {1: 1, 2: 2, 3: 1, 4: 30}
     steps: list[Step] = [
@@ -327,7 +327,6 @@ def test_end_to_end_census_question_has_no_vector_id(httpx_mock: HTTPXMock) -> N
     is the Census table and coordinate. Exercises get_data's own Census routing."""
     _mock(httpx_mock, "POST", "getCubeMetadata", "census_cube_metadata")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "census_series_info")
     _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "census_data_point")
 
     selections = {1: 7, 2: 1}

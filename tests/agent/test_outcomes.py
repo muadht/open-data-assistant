@@ -39,8 +39,7 @@ FETCH_ONTARIO: Step = (
 def _mock_ontario(httpx_mock: HTTPXMock) -> None:
     _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "normal_data_point")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "normal_data_point")
 
 
 def _answer(text: str, **value_overrides: Any) -> Step:
@@ -221,8 +220,7 @@ def test_missing_reference_period_is_sent_back(httpx_mock: HTTPXMock) -> None:
 def test_suppressed_value_must_be_named(httpx_mock: HTTPXMock) -> None:
     _mock(httpx_mock, "POST", "getCubeMetadata", "suppressed_cube_metadata")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "suppressed_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "suppressed_value")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "suppressed_value")
     value = {"coordinate": "1.1.1.1.0.0.0.0.0.0", "ref_per": "2026-06-01", "value": None}
     steps: list[Step] = [
         (

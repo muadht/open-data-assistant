@@ -94,8 +94,7 @@ def _mock(httpx_mock: HTTPXMock, method: str, path: str, fixture: str) -> None:
 def _mock_ontario(httpx_mock: HTTPXMock) -> None:
     _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
-    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
-    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "normal_data_point")
+    _mock(httpx_mock, "POST", "getDataFromCubePidCoordAndLatestNPeriods", "normal_data_point")
 
 
 def _events(

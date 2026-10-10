@@ -93,16 +93,17 @@ MemberCandidate {
 
 The only tool that fetches actual data. Takes resolved member selections (one member ID per dimension, or a default), builds the 10-part coordinate internally, decides whether to route through vector ID or coordinate based fetch, and returns the standard data shape below. The LLM never sees or constructs a coordinate string.
 
-- `selections`: `{ dimensionPositionId: memberId }` for every dimension of the table (the server fills in defaults for unspecified dimensions where the table defines one). **One** dimension may map to a list of member IDs (at most 20) instead, to fetch one series per member in a single call: e.g. every province for "population by province", or Ontario and Alberta for a comparison. Returns one `DataResult` per series, in the order the members were listed.
-- Several series are fetched with **one batched WDS request per endpoint**, not one call each: WDS's series-lookup and data endpoints all take a list. WDS doesn't return batched items in request order (live-verified 2026-10-09), so results are matched back by coordinate.
+- `selections`: `{ dimensionPositionId: memberId }` for every dimension of the table (the server fills in defaults for unspecified dimensions where the table defines one). Any dimension may map to a list of member IDs instead, and every combination of the listed members is fetched in a single call (at most 100 series): e.g. every province for "population by province", or every province × men and women for a comparison by sex. Returns one `DataResult` per series, in the order the members were listed (first listed dimension outermost).
+- Several series are fetched with **one batched WDS request**, not one call each: WDS's series-lookup and data endpoints all take a list. WDS doesn't return batched items in request order (live-verified 2026-10-09), so results are matched back by coordinate.
 - `period`: either `{ type: "latestN", n: <int> }` or `{ type: "range", start, end }`. Range queries are only possible via vector ID — if the resolved series has no vector ID (e.g. a census table), the server rejects a range request with a clear error rather than silently returning the wrong thing.
 
 Internally, `get_data`:
 1. Builds one coordinate per requested series from `selections`.
-2. Looks up the vector IDs via one batched `getSeriesInfoFromCubePidCoord` call.
-3. Calls the appropriate WDS endpoint (`getDataFromVectorsAndLatestNPeriods`, `getDataFromVectorByReferencePeriodRange`, or `getDataFromCubePidCoordAndLatestNPeriods`).
+2. **latestN:** fetches every series by coordinate in one `getDataFromCubePidCoordAndLatestNPeriods` call, which returns the data and each series' vector ID together. Live-measured (2026-10-10): 0.5 s for 20 series and 1.5 s for 200, against 1.8 s and 14.6 s for `getDataFromVectorsAndLatestNPeriods` (about 70 ms per series), so there's no vector lookup first (#88).
+   **range:** the only range endpoint takes vector IDs, so it looks them up first with one batched `getSeriesInfoFromCubePidCoord` call, then calls `getDataFromVectorByReferencePeriodRange`.
+3. Takes each series' title and unit from the (cached) cube metadata: the title is its members' names joined by `;`, and the unit is the `memberUomCode` of its member of the dimension with `hasUom` (both live-verified against `getSeriesInfoFromCubePidCoord`; every active table has a `hasUom` dimension).
 4. Applies the scalar factor to every value (WDS decimals are pre-applied; the ×10^scalar is not).
-5. Checks per-item SUCCESS/FAILED status and `vectorId: 0` (a formally "successful" but nonexistent series) and surfaces that as a clear "no data for this combination" rather than an empty chart.
+5. Surfaces a series that doesn't exist as a clear "no series for this combination" error rather than an empty chart: by coordinate, WDS answers `FAILED` (`responseStatusCode: 2`); in the series lookup it answers `SUCCESS` with an empty title and `vectorId: 0`.
 
 ## Standard data shape
 
