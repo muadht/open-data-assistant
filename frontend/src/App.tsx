@@ -254,13 +254,16 @@ export default function App({ transport }: { transport?: ChatTransport }) {
         onValueChange={setInput}
         isLoading={isStreaming}
         onSubmit={() => submit(input)}
-        className="rounded-3xl"
+        // One row, text then the send button, rounded into a pill like Copilot's and
+        // ChatGPT's; longer text grows the box upward with the same corners.
+        className="flex items-end gap-2 rounded-[1.75rem] py-2 pr-2 pl-3"
       >
         <PromptInputTextarea
           placeholder="Ask about Canadian statistics…"
           aria-label="Your question"
+          className="flex-1"
         />
-        <PromptInputActions className="justify-end pt-2">
+        <PromptInputActions className="shrink-0 pb-1">
           {isStreaming ? (
             <PromptInputAction tooltip="Stop">
               <Button
