@@ -251,7 +251,7 @@ def test_end_to_end_normal_question(httpx_mock: HTTPXMock) -> None:
     with deps.wds_client:
         result = agent.run_sync("What's the unemployment rate in Ontario?", deps=deps)
 
-    [data_result] = _tool_returns(result.all_messages(), "get_data")
+    [[data_result]] = _tool_returns(result.all_messages(), "get_data")
     assert isinstance(data_result, DataResult)
     assert data_result.product_id == 14100287
     assert data_result.vector_id == 2063949
@@ -287,7 +287,7 @@ def test_end_to_end_scalar_factor_question(httpx_mock: HTTPXMock) -> None:
     with deps.wds_client:
         result = agent.run_sync("What's Canada's GDP?", deps=deps)
 
-    [data_result] = _tool_returns(result.all_messages(), "get_data")
+    [[data_result]] = _tool_returns(result.all_messages(), "get_data")
     assert isinstance(data_result, DataResult)
     assert data_result.series[0].value == pytest.approx(3437720.0 * 10**6)
 
@@ -319,7 +319,7 @@ def test_end_to_end_census_question_has_no_vector_id(httpx_mock: HTTPXMock) -> N
     with deps.wds_client:
         result = agent.run_sync("What was Ontario's population in the 2021 Census?", deps=deps)
 
-    [data_result] = _tool_returns(result.all_messages(), "get_data")
+    [[data_result]] = _tool_returns(result.all_messages(), "get_data")
     assert isinstance(data_result, DataResult)
     assert data_result.vector_id is None
     assert data_result.series[0].value == 14223942.0
