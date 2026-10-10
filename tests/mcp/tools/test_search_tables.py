@@ -88,9 +88,9 @@ def test_year_in_query_text_is_extracted_as_a_filter():
     search_tables(client, "statcan-products", FakeEmbedder(), "unemployment rate in 2015")
 
     bm25_call = client.calls[0]
-    assert {"range": {"coverage.start_date": {"lte": "2015-12-31"}}} in bm25_call["body"][
-        "query"
-    ]["bool"]["filter"]
+    assert {"range": {"coverage.start_date": {"lte": "2015-12-31"}}} in bm25_call["body"]["query"][
+        "bool"
+    ]["filter"]
 
 
 def test_caller_filter_is_additive_not_overriding_query_text_extraction():

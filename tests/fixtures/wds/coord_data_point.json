@@ -1,0 +1,73 @@
+{
+  "description": "getDataFromCubePidCoordAndLatestNPeriods for Alberta and Ontario's unemployment rate (14100287), latestN 1, in one batched request - the endpoint get_data uses for every latestN query (#88). Each item carries the data and the series' vectorId, so no separate getSeriesInfoFromCubePidCoord lookup is needed. Item and data-point shapes are identical to getDataFromVectorsAndLatestNPeriods' (live-verified when captured).",
+  "captured_at": "2026-10-10T21:00:29Z",
+  "source": "live",
+  "request": {
+    "method": "getDataFromCubePidCoordAndLatestNPeriods",
+    "body": [
+      {
+        "productId": 14100287,
+        "coordinate": "10.7.1.1.1.1.0.0.0.0",
+        "latestN": 1
+      },
+      {
+        "productId": 14100287,
+        "coordinate": "7.7.1.1.1.1.0.0.0.0",
+        "latestN": 1
+      }
+    ]
+  },
+  "http_status": 200,
+  "body": [
+    {
+      "status": "SUCCESS",
+      "object": {
+        "responseStatusCode": 0,
+        "productId": 14100287,
+        "coordinate": "10.7.1.1.1.1.0.0.0.0",
+        "vectorId": 2064516,
+        "vectorDataPoint": [
+          {
+            "refPer": "2026-09-01",
+            "refPer2": "",
+            "refPerRaw": "2026-09-01",
+            "refPerRaw2": "",
+            "value": 6.4,
+            "decimals": 1,
+            "scalarFactorCode": 0,
+            "symbolCode": 0,
+            "statusCode": 0,
+            "securityLevelCode": 0,
+            "releaseTime": "2026-10-09T08:30",
+            "frequencyCode": 6
+          }
+        ]
+      }
+    },
+    {
+      "status": "SUCCESS",
+      "object": {
+        "responseStatusCode": 0,
+        "productId": 14100287,
+        "coordinate": "7.7.1.1.1.1.0.0.0.0",
+        "vectorId": 2063949,
+        "vectorDataPoint": [
+          {
+            "refPer": "2026-09-01",
+            "refPer2": "",
+            "refPerRaw": "2026-09-01",
+            "refPerRaw2": "",
+            "value": 7.0,
+            "decimals": 1,
+            "scalarFactorCode": 0,
+            "symbolCode": 0,
+            "statusCode": 0,
+            "securityLevelCode": 0,
+            "releaseTime": "2026-10-09T08:30",
+            "frequencyCode": 6
+          }
+        ]
+      }
+    }
+  ]
+}

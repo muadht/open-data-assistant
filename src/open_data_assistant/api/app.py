@@ -8,6 +8,7 @@ import os
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -21,7 +22,7 @@ from ..agent.outcomes import Outcome
 from ..search.config import EmbeddingConfig, OpenSearchConfig
 from ..search.embeddings import SentenceTransformerEmbedder
 from ..search.pipeline import make_client
-from ..wds.client import WdsClient
+from ..wds.client import WdsClient, WdsError
 from .chat import MAX_MESSAGE_LENGTH, ChatRequest, chat_events
 from .sessions import SessionStore
 from .tables import router as tables_router
@@ -111,8 +112,16 @@ def build_app() -> FastAPI:
 
     def make_deps() -> AgentDeps:
         opensearch = OpenSearchConfig.from_env()
+        wds_client = WdsClient()
+        # Fetched once and cached for the process; doing it now spares the first question
+        # ~0.5 s. Not fatal: if WDS is unreachable (or in its maintenance window), the first
+        # get_data fetches them instead.
+        try:
+            wds_client.get_code_sets()
+        except (WdsError, httpx.HTTPError) as exc:
+            logger.warning("Couldn't prefetch WDS code sets: %s", exc)
         return AgentDeps(
-            wds_client=WdsClient(),
+            wds_client=wds_client,
             search_client=make_client(opensearch),
             search_index=opensearch.index_name,
             embedder=SentenceTransformerEmbedder(EmbeddingConfig.from_env()),

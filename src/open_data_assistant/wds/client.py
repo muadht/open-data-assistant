@@ -21,8 +21,14 @@ import httpx
 BASE_URL = "https://www150.statcan.gc.ca/t1/wds/rest"
 
 # One observed cold-start lookup took ~64s, then ~0.3s on repeat - a generous read timeout
-# avoids mistaking a slow WDS response for a hung request.
-_TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
+# avoids mistaking a slow WDS response for a hung request. The pool timeout is as long, since
+# a request may wait for one of the few connections (below) while another is slow.
+_TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=120.0)
+
+# At most this many requests in flight to WDS at once; more wait for a free connection. Three
+# simultaneous requests failed live with TLS handshake timeouts, two worked (2026-10-10) - and
+# the agent runs parallel tool calls concurrently, so without a cap they'd collide.
+_MAX_CONNECTIONS = 2
 _MAX_RETRIES = 3
 _RETRY_BACKOFF_SECONDS = 2.0
 
@@ -85,7 +91,13 @@ class WdsClient:
         retry_backoff_seconds: float = _RETRY_BACKOFF_SECONDS,
         metadata_ttl_seconds: float = _METADATA_TTL_SECONDS,
     ) -> None:
-        self._client = client or httpx.Client(base_url=BASE_URL, timeout=_TIMEOUT)
+        self._client = client or httpx.Client(
+            base_url=BASE_URL,
+            timeout=_TIMEOUT,
+            limits=httpx.Limits(
+                max_connections=_MAX_CONNECTIONS, max_keepalive_connections=_MAX_CONNECTIONS
+            ),
+        )
         self._rate_limiter = _RateLimiter(_MAX_REQUESTS_PER_SECOND)
         self._max_retries = max_retries
         self._retry_backoff_seconds = retry_backoff_seconds

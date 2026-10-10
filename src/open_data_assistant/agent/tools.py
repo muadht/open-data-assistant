@@ -82,10 +82,12 @@ def get_data(
     period: Period,
 ) -> list[DataResult]:
     """Fetch actual data. `selections` maps each dimension's dimensionPositionId to a
-    resolved memberId (from find_members or get_table_structure). One dimension may instead
-    map to a list of memberIds (at most 20) to fetch several series in one call - e.g. every
-    province for "population by province", or Ontario and Alberta for a comparison. Returns
-    one DataResult per series. `period` is either {"type": "latestN", "n": <int>} or
+    resolved memberId (from find_members or get_table_structure). Any dimension may instead
+    map to a list of memberIds to fetch several series in one call: every combination of the
+    listed members is fetched, at most 100 series - e.g. every province for "population by
+    province", or every province x men and women for a comparison by sex. Ask for everything
+    a question needs in one call rather than one call per member. Returns one DataResult per
+    series. `period` is either {"type": "latestN", "n": <int>} or
     {"type": "range", "start": ..., "end": ...} (range queries require every resolved series
     to have a vector ID - no vector means no vector, which get_data will report as an error
     rather than approximating).
