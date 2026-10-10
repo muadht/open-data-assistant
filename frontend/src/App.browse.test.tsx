@@ -274,8 +274,10 @@ describe('Browse tables', () => {
     fireEvent.click(
       screen.getByRole('button', { name: /Consumer Price Index/ }),
     )
+    // "Ask about this table" is enabled once the details have loaded.
+    expect(await screen.findByText('Canada')).toBeTruthy()
     fireEvent.click(
-      await screen.findByRole('button', { name: /Ask about this table/ }),
+      screen.getByRole('button', { name: /Ask about this table/ }),
     )
 
     // Pinned above the input and sent with the message; the panel stays open.
@@ -381,5 +383,28 @@ describe('Table structure in the chat', () => {
     const drawer = await screen.findByRole('dialog')
     expect(await within(drawer).findByText('Canada')).toBeTruthy()
     expect(screen.queryByRole('complementary')).toBeNull()
+  })
+
+  it('offers no way back to the list for a table opened from the chat', async () => {
+    window.location.hash = '#/browse?frequency=Monthly'
+    const sources = await answered()
+    await screen.findByRole('complementary', { name: 'Browse tables' })
+    fireEvent.click(
+      within(sources).getByRole('button', {
+        name: /^Labour force characteristics/,
+      }),
+    )
+    const panel = await screen.findByRole('complementary', {
+      name: 'Table details',
+    })
+    expect(
+      within(panel).queryByRole('button', { name: /Back to results/ }),
+    ).toBeNull()
+
+    // The list is still there, as it was, from the header.
+    fireEvent.click(screen.getByRole('button', { name: 'Browse tables' }))
+    expect(
+      await screen.findByRole('button', { name: 'Frequency: Monthly' }),
+    ).toBeTruthy()
   })
 })

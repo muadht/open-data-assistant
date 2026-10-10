@@ -42,6 +42,13 @@ export default function App({ transport }: { transport?: ChatTransport }) {
   // (with a way back) or on their own.
   const browsing = route.view === 'browse'
   const [detailTable, setDetailTable] = useState<number | null>(null)
+  // "Back to results" only for a table opened from the list: one opened from the chat (a
+  // source or the pinned table) didn't come from there, even if the list is open beneath.
+  const [detailFromList, setDetailFromList] = useState(false)
+  const openTable = (productId: number, fromList = false) => {
+    setDetailTable(productId)
+    setDetailFromList(fromList)
+  }
   // Closing the browse panel leaves #/browse, so its filters are kept here for reopening.
   const [lastBrowse, setLastBrowse] = useState(() =>
     browsing ? route.search : new URLSearchParams(),
@@ -96,7 +103,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
           />
           <button
             type="button"
-            onClick={() => setDetailTable(pinned.productId)}
+            onClick={() => openTable(pinned.productId)}
             title="View table details"
             className="truncate hover:underline"
           >
@@ -233,7 +240,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
                       active={isStreaming && index === messages.length - 1}
                       onSend={submit}
                       onRetry={() => submit(previousQuestion(messages, index))}
-                      onOpenTable={setDetailTable}
+                      onOpenTable={openTable}
                     />
                   ),
                 )}
@@ -268,7 +275,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
                   setLastBrowse(search)
                   navigate('browse', search)
                 }}
-                onOpenTable={setDetailTable}
+                onOpenTable={(productId) => openTable(productId, true)}
                 onClose={closePanel}
               />
             </div>
@@ -276,7 +283,11 @@ export default function App({ transport }: { transport?: ChatTransport }) {
           {detailTable !== null && (
             <TableDetailsPane
               productId={detailTable}
-              onBack={browsing ? () => setDetailTable(null) : undefined}
+              onBack={
+                browsing && detailFromList
+                  ? () => setDetailTable(null)
+                  : undefined
+              }
               onClose={closePanel}
               onAsk={setPinned}
             />
