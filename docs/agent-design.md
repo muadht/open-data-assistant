@@ -77,7 +77,7 @@ budget (2); after that the run fails visibly rather than returning an unchecked 
 | Check | Rule |
 |---|---|
 | Every number in the answer appears in a data-bearing tool result from this conversation | 5 |
-| Every `DataResult` used is cited (table, series where present) | 1 |
+| (Not checked in the text: the chat endpoint sends every used `DataResult` with the answer and the app shows each one's source beneath it - see `AGENT_SYSTEM_PROMPT` in `agent/system_prompt.py`). URLs in the answer text are rejected, so the text stays plain | 1 |
 | Reference period stated | 2 |
 | Non-normal status / symbol on a used data point is mentioned | 3 |
 
@@ -97,7 +97,7 @@ MCP server sends that prompt to clients that have no output types.
 | Bad tool arguments (`ValueError` in a tool) | `ModelRetry`: the model sees the error and corrects itself (**Decided**, `agent/tools.py`) |
 | WDS maintenance window (409) / outage (`WdsError`) | Stop; tell the user when to retry. No model retry. (**Decided**, propagates from `agent/tools.py`) |
 | Too many steps | `DEFAULT_USAGE_LIMITS`: 12 requests / 12 tool calls per run (a typical question needs 4-6), passed to `run()` by the caller; tune from #10's data |
-| Too slow | `DEFAULT_RUN_TIMEOUT_SECONDS` (30s), applied by the caller around `run()` - Pydantic AI has no run-level timeout |
+| Too slow | `DEFAULT_RUN_TIMEOUT_SECONDS` (60s; 30s timed out real runs that were nearly done), applied by the caller around `run()` - Pydantic AI has no run-level timeout |
 | Validator keeps failing | After 2 retries the run raises `UnexpectedModelBehavior`; the caller shows an error, never the unchecked answer |
 
 ### Progress events (Proposed)
@@ -145,7 +145,7 @@ StatCan knowledge lives in four places, each with a clear owner:
 
 | Where | What | Status |
 |---|---|---|
-| System prompt (`agent/system_prompt.py`) | Trust rules, typical flow, general guidance | Decided |
+| System prompt (`agent/system_prompt.py`) | Trust rules, typical flow, general guidance. Two variants: `SYSTEM_PROMPT` for MCP clients (citations and flags in the text) and `AGENT_SYSTEM_PROMPT` + `APP_INSTRUCTIONS` for the web app (sources and flags shown by the UI; plain answers; defaults instead of clarifications) | Decided |
 | Tool-result hints | Meaning attached to data from metadata, e.g. a `2002=100` unit means "index: compare changes, not levels", scalar factor, preliminary periods, and the footnotes that apply to the selected series (#38) | Proposed |
 | Per-table defaults | Default members for sub-dimensions the user didn't mention (e.g. seasonally adjusted, both sexes), to fix the over-asking found in the [spike](llm-provider-spike.md) | Proposed |
 | Concept-to-table map | Curated shortcuts for the most common questions (e.g. "inflation"); search covers the rest | Proposed |

@@ -29,9 +29,9 @@ class Answer(BaseModel):
 
     text: str = Field(
         description=(
-            "The plain-language answer, following the trust rules: reference period stated, "
-            "a markdown link to each series' series_url (or source_url if it has none), and "
-            "any quality flag or suppression named explicitly."
+            "A short plain-language answer leading with the numbers and their reference "
+            "period. Name any quality flag or suppression on a value you use. No URLs or "
+            "IDs: the app shows each series' source, flags and a chart beneath the answer."
         )
     )
     values: list[UsedValue] = Field(
@@ -40,13 +40,18 @@ class Answer(BaseModel):
 
 
 class Clarification(BaseModel):
-    """You need the user to choose before you can fetch data - e.g. more than one table could
-    plausibly answer the question, or a phrase matches several members. Don't guess; ask.
+    """You need the user to choose before you can fetch data, because the choice would change
+    the answer and no sensible default settles it - e.g. two tables measure genuinely
+    different things. Don't ask about choices a default covers (headline series, latest
+    period); use the default and say so in the answer. Ask at most once per question.
     """
 
     question: str = Field(description="The question to put to the user, in plain language.")
     options: list[str] = Field(
-        description="The choices, worded as the user should see them (e.g. table titles)."
+        description=(
+            "2-4 short choices in plain language, as the user should see them - no product "
+            "IDs, vector IDs or table numbers."
+        )
     )
 
 

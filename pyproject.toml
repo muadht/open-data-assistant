@@ -12,12 +12,16 @@ dependencies = [
     "opensearch-py>=2.7",
     "sentence-transformers>=3.0",
     "mcp>=2.3.0",
+    "uvicorn>=0.54",
+    "python-dotenv>=1.2.4",
+    "openai>=3.26.0",
 ]
 
 [project.scripts]
 build-catalogue = "open_data_assistant.catalogue.cli:main"
 ingest-opensearch = "open_data_assistant.search.cli:main"
 mcp-server = "open_data_assistant.mcp.server:main"
+api = "open_data_assistant.api.cli:main"
 
 [dependency-groups]
 dev = [
@@ -25,8 +29,6 @@ dev = [
     "mypy>=1.13",
     "pytest>=8.3",
     "pytest-httpx>=0.33",
-    "openai>=3.26.0",
-    "python-dotenv>=1.2.4",
     "openpyxl>=3.1.5",
     "types-openpyxl>=3.1.5.20260827",
 ]

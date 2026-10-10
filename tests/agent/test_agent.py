@@ -56,13 +56,9 @@ def _scripted_model(steps: list[Step]) -> FunctionModel:
     return FunctionModel(respond)
 
 
-ONTARIO_LINK = (
-    "https://www150.statcan.gc.ca/t1/tbl1/en/sbv.action"
-    "?vectorNumbers=v2063949&searchOption=2&latestN=1"
-)
 ONTARIO_ANSWER_ARGS: dict[str, Any] = {
-    "text": "The unemployment rate in Ontario was 6.9% in August 2026 "
-    f"([Ontario, unemployment rate (v2063949)]({ONTARIO_LINK})).",
+    # Plain text: the app shows sources beneath the answer, and URLs are rejected (#11).
+    "text": "The unemployment rate in Ontario was 6.9% in August 2026, seasonally adjusted.",
     "values": [{"coordinate": "7.7.1.1.1.1.0.0.0.0", "ref_per": "2026-08-01", "value": 6.9}],
 }
 ONTARIO_ANSWER: Step = ("final_result_Answer", ONTARIO_ANSWER_ARGS)
@@ -127,8 +123,8 @@ def test_multi_turn_conversation_threads_history(httpx_mock: HTTPXMock) -> None:
         (
             "final_result_Answer",
             {
-                "text": "That 6.9% for August 2026 came from Statistics Canada table 14100287 "
-                f"([v2063949]({ONTARIO_LINK})).",
+                "text": "That 6.9% for August 2026 came from Statistics Canada's Labour "
+                "Force Survey table.",
                 "values": ONTARIO_ANSWER_ARGS["values"],
             },
         ),
@@ -151,7 +147,7 @@ def test_multi_turn_conversation_threads_history(httpx_mock: HTTPXMock) -> None:
     # Turn 2 states a value without calling get_data again - allowed, because the validator
     # checks against data fetched anywhere in the conversation, not just this run.
     assert isinstance(result2.output, Answer)
-    assert "14100287" in result2.output.text
+    assert "Labour Force Survey" in result2.output.text
 
 
 def test_invalid_tool_args_trigger_a_retry_not_a_crash(httpx_mock: HTTPXMock) -> None:
@@ -303,9 +299,7 @@ def test_end_to_end_scalar_factor_question(httpx_mock: HTTPXMock) -> None:
         (
             "final_result_Answer",
             {
-                "text": "Canada's GDP was about $3.44 trillion in Q2 2026 "
-                "([GDP at market prices (v62305783)](https://www150.statcan.gc.ca/t1/tbl1/en/"
-                "sbv.action?vectorNumbers=v62305783&searchOption=2&latestN=1)).",
+                "text": "Canada's GDP was about $3.44 trillion in Q2 2026.",
                 "values": [
                     {
                         "coordinate": "1.2.1.30.0.0.0.0.0.0",
@@ -349,10 +343,7 @@ def test_end_to_end_census_question_has_no_vector_id(httpx_mock: HTTPXMock) -> N
         (
             "final_result_Answer",
             {
-                # A Census series has no series_url, so the table link is the citation.
-                "text": "Ontario's population in the 2021 Census was 14,223,942 "
-                "([table 98100001](https://www150.statcan.gc.ca/t1/tbl1/en/tv.action"
-                "?pid=9810000101)).",
+                "text": "Ontario's population in the 2021 Census was 14,223,942.",
                 "values": [
                     {
                         "coordinate": "7.1.0.0.0.0.0.0.0.0",

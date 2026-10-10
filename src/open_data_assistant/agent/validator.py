@@ -6,10 +6,16 @@ model can fix the answer rather than the run returning an unchecked one.
 
 Only the structured `Answer.values` are checked against fetched data (not numbers in the
 free text) - the ticket's agreed starting point; see #48 for when to revisit that.
+
+Trust rule 1 (cite the source) isn't checked in the text: every value must trace to a fetched
+DataResult (rule 5, below), and the chat endpoint sends those DataResults with the answer, so
+the app always shows each series' source beneath it (AGENT_SYSTEM_PROMPT, rule 1). URLs in the
+text are rejected rather than tolerated, so answers stay clean whatever the prompt does.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pydantic_ai import ModelRetry, RunContext
@@ -19,10 +25,12 @@ from ..mcp.schemas import DataPoint, DataResult
 from .deps import AgentDeps
 from .outcomes import Answer, Outcome
 
+_URL = re.compile(r"https?://", re.IGNORECASE)
+
 
 def validate_outcome(ctx: RunContext[AgentDeps], outcome: Outcome) -> Outcome:
     if isinstance(outcome, Answer):
-        _validate_answer(outcome, _fetched_data(ctx.messages))
+        _validate_answer(outcome, fetched_data(ctx.messages))
     return outcome
 
 
@@ -34,6 +42,11 @@ def _validate_answer(answer: Answer, fetched: dict[str, DataResult]) -> None:
         )
 
     problems: list[str] = []
+    if _URL.search(answer.text):
+        problems.append(
+            "Remove the URLs from the answer text: the app shows each series' source link "
+            "beneath the answer."
+        )
     for used in answer.values:
         result = fetched.get(used.coordinate)
         point = _point(result, used.ref_per) if result else None
@@ -43,10 +56,6 @@ def _validate_answer(answer: Answer, fetched: dict[str, DataResult]) -> None:
                 "appear in any fetched data - only state numbers get_data returned."
             )
             continue
-
-        link = str(result.series_url or result.source_url)
-        if link not in answer.text:
-            problems.append(f"The answer must link this series: {link}")
 
         year = used.ref_per[:4]
         if year not in answer.text:
@@ -81,7 +90,7 @@ def _point(result: DataResult, ref_per: str) -> DataPoint | None:
     return next((p for p in result.series if p.ref_per == ref_per), None)
 
 
-def _fetched_data(messages: list[ModelMessage]) -> dict[str, DataResult]:
+def fetched_data(messages: list[ModelMessage]) -> dict[str, DataResult]:
     """Every DataResult returned by get_data so far in the conversation, keyed by coordinate
     - earlier turns included, so a follow-up may reuse data it already fetched."""
     fetched: dict[str, DataResult] = {}
