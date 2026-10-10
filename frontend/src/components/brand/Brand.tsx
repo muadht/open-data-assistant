@@ -14,8 +14,7 @@ export function Logo({ className }: { className?: string }) {
   return (
     <ChartSpline
       aria-hidden
-      strokeWidth={2.25}
-      className={cn('size-6 shrink-0 text-primary', className)}
+      className={cn('size-4 shrink-0 text-primary', className)}
     />
   )
 }

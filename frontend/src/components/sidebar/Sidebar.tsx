@@ -77,7 +77,7 @@ export function Sidebar({
           onClick={onToggle}
           aria-label="Open sidebar"
           title="Open sidebar"
-          className="group mb-3 flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="group mb-3 flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <Logo className="group-hover:hidden group-focus-visible:hidden" />
           <PanelLeftOpen className="hidden size-4 group-hover:block group-focus-visible:block" />
@@ -93,7 +93,7 @@ export function Sidebar({
       aria-label="Sidebar"
       className="flex h-full w-64 flex-col bg-sidebar text-sm text-sidebar-foreground"
     >
-      <div className="flex items-center justify-between gap-2 py-3 pr-2 pl-3">
+      <div className="flex items-center justify-between gap-2 py-3 pr-2 pl-4">
         <Brand />
         <button
           type="button"
