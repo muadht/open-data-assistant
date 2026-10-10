@@ -11,7 +11,7 @@ import {
 const defaultTransport: ChatTransport =
   import.meta.env.VITE_CHAT_MOCK === '1' ? createMockTransport() : httpTransport
 
-/** Chat state plus `send` and `stop`. All the logic lives in chatReducer and runChat; this
+/** Chat state plus `send`, `stop` and `reset` (new chat). All the logic lives in chatReducer and runChat; this
  * only wires them to React. */
 export function useChat(transport: ChatTransport = defaultTransport) {
   const [state, dispatch] = useReducer(chatReducer, initialChatState)
@@ -41,7 +41,12 @@ export function useChat(transport: ChatTransport = defaultTransport) {
 
   const stop = useCallback(() => controllerRef.current?.abort(), [])
 
+  const reset = useCallback(() => {
+    controllerRef.current?.abort()
+    dispatch({ type: 'reset' })
+  }, [])
+
   useEffect(() => () => controllerRef.current?.abort(), [])
 
-  return { ...state, send, stop }
+  return { ...state, send, stop, reset }
 }
