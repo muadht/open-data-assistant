@@ -1,4 +1,4 @@
-import { ArrowUp, ListTree, Square, SquarePen, Table2, X } from 'lucide-react'
+import { ArrowUp, Square, SquarePen, Table2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '@/chat/chatState'
 import { nextExamples } from '@/chat/examples'
@@ -75,20 +75,16 @@ export default function App({ transport }: { transport?: ChatTransport }) {
             className="size-4 shrink-0 text-muted-foreground"
             aria-hidden
           />
-          <span className="truncate">
+          <button
+            type="button"
+            onClick={() => setPanelTable(pinned.productId)}
+            title="View table details"
+            className="truncate hover:underline"
+          >
             Asking about: {pinned.title}{' '}
             <span className="text-muted-foreground">
               ({tableNumber(pinned.productId)})
             </span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setPanelTable(pinned.productId)}
-            aria-label="View structure of this table"
-            title="View structure"
-            className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <ListTree className="size-3.5" />
           </button>
           <button
             type="button"
