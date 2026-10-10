@@ -1,6 +1,6 @@
 # Open Data Assistant
 
-Natural-language chat assistant over Statistics Canada's Web Data Service (WDS). See [docs/](docs/) for the MVP scope, architecture overview, and MCP tool contract.
+Natural-language chat assistant over Statistics Canada's Web Data Service (WDS). See [docs/](docs/) for the MVP scope, architecture overview, and MCP tool contract, and [docs/visual-identity.md](docs/visual-identity.md) for what the UI may use of Canada.ca's look and Canada's symbols.
 
 ## Setup
 

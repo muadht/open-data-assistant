@@ -1,6 +1,7 @@
 import {
   ArrowUp,
   PanelLeftOpen,
+  Plus,
   Square,
   SquarePen,
   Table2,
@@ -18,6 +19,7 @@ import { ROOM_FOR_BOTH, WIDE } from '@/lib/breakpoints'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/chat/useChat'
+import { MapleLeaf, PRODUCT_NAME } from '@/components/brand/Brand'
 import { AssistantReply } from '@/components/chat/AssistantReply'
 import {
   SettingsDialog,
@@ -253,18 +255,35 @@ export default function App({ transport }: { transport?: ChatTransport }) {
         onValueChange={setInput}
         isLoading={isStreaming}
         onSubmit={() => submit(input)}
-        className="rounded-3xl"
+        // One row - add, text, send - rounded into a pill like Copilot's and ChatGPT's;
+        // longer text grows the box upward with the same corners. The text's line box is
+        // the buttons' height (36px), so a single line sits on their centre line.
+        className="flex items-end gap-1 rounded-[1.75rem] p-2"
       >
+        <PromptInputAction tooltip="Attachments are coming later">
+          {/* A placeholder where attachments will go; it does nothing yet. */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Add attachment"
+            aria-disabled
+            className="size-9 shrink-0 cursor-default rounded-full text-muted-foreground"
+          >
+            <Plus className="size-5" />
+          </Button>
+        </PromptInputAction>
         <PromptInputTextarea
           placeholder="Ask about Canadian statistics…"
           aria-label="Your question"
+          className="min-h-9 flex-1 px-1 py-1.5 text-base leading-6 md:text-base"
         />
-        <PromptInputActions className="justify-end pt-2">
+        <PromptInputActions className="shrink-0">
           {isStreaming ? (
             <PromptInputAction tooltip="Stop">
               <Button
                 size="icon"
-                className="rounded-full"
+                className="size-9 rounded-full"
                 onClick={stop}
                 aria-label="Stop"
               >
@@ -275,7 +294,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
             <PromptInputAction tooltip="Send">
               <Button
                 size="icon"
-                className="rounded-full"
+                className="size-9 rounded-full"
                 disabled={!input.trim()}
                 onClick={() => submit(input)}
                 aria-label="Send"
@@ -328,30 +347,51 @@ export default function App({ transport }: { transport?: ChatTransport }) {
                 <PanelLeftOpen className="size-4" />
               </button>
             )}
-            {/* The sidebar shows the name when it's expanded. */}
-            <h1 className={cn('font-semibold', sidebarExpanded && 'sr-only')}>
-              StatCan Data Assistant
+            {/* On wide screens the sidebar carries the name, or just the logo when
+                collapsed, as in ChatGPT and Gemini; the header only names the app on
+                narrow screens. */}
+            <h1 className={cn('font-bold', wide && 'sr-only')}>
+              {PRODUCT_NAME}
             </h1>
-            {!wide && (
+            <div className="ml-auto flex items-center gap-1">
+              {/* Where Canada.ca puts its language toggle. A placeholder until the app is
+                  translated: GC public tools must be in both official languages. */}
               <button
                 type="button"
-                onClick={newChat}
-                disabled={isStreaming || (messages.length === 0 && !pinned)}
-                aria-label="New chat"
-                className="ml-auto rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                lang="fr"
+                aria-disabled
+                title="Version française à venir · French version coming soon"
+                className="cursor-not-allowed rounded-md px-2 py-1 text-sm text-muted-foreground underline-offset-4 hover:underline"
               >
-                <SquarePen className="size-4" />
+                Français
               </button>
-            )}
+              {!wide && (
+                <button
+                  type="button"
+                  onClick={newChat}
+                  disabled={isStreaming || (messages.length === 0 && !pinned)}
+                  aria-label="New chat"
+                  className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                >
+                  <SquarePen className="size-4" />
+                </button>
+              )}
+            </div>
           </header>
 
           <div className="flex min-h-0 flex-1">
             {messages.length === 0 ? (
               <main className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-24">
                 <div className="space-y-1 text-center">
-                  <h2 className="text-2xl font-semibold">
+                  <MapleLeaf className="mx-auto mb-3 size-9 text-gc-accent" />
+                  <h2 className="text-2xl font-bold">
                     What would you like to know?
                   </h2>
+                  {/* Canada.ca's red bar under a page's main heading. */}
+                  <div
+                    aria-hidden
+                    className="mx-auto mt-2 mb-3 h-1.5 w-16 bg-gc-accent"
+                  />
                   <p className="text-muted-foreground">
                     Ask about Statistics Canada data in plain language. Every
                     answer cites its source.
@@ -405,7 +445,8 @@ export default function App({ transport }: { transport?: ChatTransport }) {
                 </ChatContainerRoot>
                 <div className="mx-auto w-full max-w-3xl px-4 pb-4">
                   {prompt}
-                  <p className="mt-2 text-center text-xs text-muted-foreground">
+                  <p className="mt-2 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                    <MapleLeaf className="size-3.5 text-gc-accent" />
                     Answers use Statistics Canada data only. Check the sources
                     for each answer.
                   </p>

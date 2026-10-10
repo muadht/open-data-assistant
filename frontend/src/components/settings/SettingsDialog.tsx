@@ -245,6 +245,27 @@ function About() {
         </a>
         . Answers use Statistics Canada data only.
       </p>
+      <div className="space-y-2 rounded-lg border p-3 text-xs text-muted-foreground">
+        <p>
+          <span className="font-medium text-foreground">Prototype.</span> This
+          is not a Government of Canada or Statistics Canada service.
+        </p>
+        {/* The attribution the Statistics Canada Open Licence asks for. */}
+        <p>
+          Source: Statistics Canada. Reproduced and distributed on an "as is"
+          basis with the permission of Statistics Canada, under the{' '}
+          <a
+            href="https://www.statcan.gc.ca/en/reference/licence"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-foreground underline underline-offset-2"
+          >
+            Statistics Canada Open Licence
+          </a>
+          . This does not constitute an endorsement by Statistics Canada of this
+          product.
+        </p>
+      </div>
     </div>
   )
 }

@@ -6,6 +6,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Brand, Logo } from '@/components/brand/Brand'
 import { cn } from '@/lib/utils'
 
 export interface RecentChat {
@@ -69,14 +70,17 @@ export function Sidebar({
         aria-label="Sidebar"
         className="flex h-full w-14 flex-col items-center gap-1 bg-sidebar py-3 text-sidebar-foreground"
       >
+        {/* The logo is the open button, as in ChatGPT and Gemini: it turns into the
+            open icon on hover or keyboard focus. */}
         <button
           type="button"
           onClick={onToggle}
           aria-label="Open sidebar"
           title="Open sidebar"
-          className="mb-3 rounded-md p-2 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="group mb-3 flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
-          <PanelLeftOpen className="size-4" />
+          <Logo className="group-hover:hidden group-focus-visible:hidden" />
+          <PanelLeftOpen className="hidden size-4 group-hover:block group-focus-visible:block" />
         </button>
         {actions}
         <div className="mt-auto">{profile}</div>
@@ -89,8 +93,8 @@ export function Sidebar({
       aria-label="Sidebar"
       className="flex h-full w-64 flex-col bg-sidebar text-sm text-sidebar-foreground"
     >
-      <div className="flex items-center justify-between py-3 pr-2 pl-4">
-        <span className="font-semibold">StatCan Data Assistant</span>
+      <div className="flex items-center justify-between gap-2 py-3 pr-2 pl-4">
+        <Brand />
         <button
           type="button"
           onClick={onToggle}
