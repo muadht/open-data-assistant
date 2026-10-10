@@ -42,3 +42,23 @@ export function Brand() {
     </span>
   )
 }
+
+/** A maple leaf as decoration, marking the data as Canadian. Our own simplified outline in
+ * one colour, not the flag's eleven-point leaf in red: next to the Canada.ca colours, the
+ * flag's leaf would make the app look like an official government service. Never the logo. */
+export function MapleLeaf({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn('size-4 shrink-0', className)}
+    >
+      <path d="M12 21.5V17l4.5.8-.5-2.3 4.5-4-2-.7 1-3.8-3.5 1.5-1.5-2-2.5-4-2.5 4-1.5 2-3.5-1.5 1 3.8-2 .7 4.5 4-.5 2.3L12 17" />
+    </svg>
+  )
+}

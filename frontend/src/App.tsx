@@ -18,7 +18,7 @@ import { ROOM_FOR_BOTH, WIDE } from '@/lib/breakpoints'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/chat/useChat'
-import { PRODUCT_NAME } from '@/components/brand/Brand'
+import { MapleLeaf, PRODUCT_NAME } from '@/components/brand/Brand'
 import { AssistantReply } from '@/components/chat/AssistantReply'
 import {
   SettingsDialog,
@@ -363,6 +363,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
             {messages.length === 0 ? (
               <main className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-24">
                 <div className="space-y-1 text-center">
+                  <MapleLeaf className="mx-auto mb-3 size-10 text-primary" />
                   <h2 className="text-2xl font-bold">
                     What would you like to know?
                   </h2>
@@ -424,7 +425,8 @@ export default function App({ transport }: { transport?: ChatTransport }) {
                 </ChatContainerRoot>
                 <div className="mx-auto w-full max-w-3xl px-4 pb-4">
                   {prompt}
-                  <p className="mt-2 text-center text-xs text-muted-foreground">
+                  <p className="mt-2 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                    <MapleLeaf className="size-4" />
                     Answers use Statistics Canada data only. Check the sources
                     for each answer.
                   </p>
