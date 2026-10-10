@@ -157,4 +157,4 @@ Exports are generated server-side from the same `DataResult` already produced fo
 - **LLM provider comparison**: only OpenAI `gpt-5-mini` has been validated (see [docs/llm-provider-spike.md](llm-provider-spike.md)). Comparing other providers/tiers, measuring retrieval accuracy once OpenSearch is running, and re-testing with a multi-turn harness are all tracked there as follow-up, not blockers for MVP.
 - **Hosting constraints** (government cloud, data residency): unresolved. This could affect where the orchestration service and OpenSearch index are allowed to run, and may itself constrain which LLM providers are usable.
 - **Catalogue refresh cadence**: no incremental refresh job exists yet. Worth deciding whether the MVP needs one or can run on periodic full rebuilds.
-- **Caching layer**: not yet designed. `get_table_structure` and `find_members` results are stable enough to cache, but for how long, and where (in-process, Redis, etc.), isn't decided.
+- **Caching layer**: WDS metadata is cached in-process by `WdsClient` (see the data contract's "Metadata caching"). Whether a shared cache (e.g. Redis) is needed depends on how many instances are deployed.

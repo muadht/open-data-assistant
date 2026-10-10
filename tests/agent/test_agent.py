@@ -28,17 +28,14 @@ from tests.fixtures.wds import load_wds_fixture
 Step = tuple[str, dict[str, Any]] | str
 
 
-def _mock(
-    httpx_mock: HTTPXMock, method: str, path: str, fixture_name: str, *, times: int = 1
-) -> None:
+def _mock(httpx_mock: HTTPXMock, method: str, path: str, fixture_name: str) -> None:
     fixture = load_wds_fixture(fixture_name)
-    for _ in range(times):
-        httpx_mock.add_response(
-            method=method,
-            url=f"{BASE_URL}/{path}",
-            json=fixture["body"],
-            status_code=fixture["http_status"],
-        )
+    httpx_mock.add_response(
+        method=method,
+        url=f"{BASE_URL}/{path}",
+        json=fixture["body"],
+        status_code=fixture["http_status"],
+    )
 
 
 def _scripted_model(steps: list[Step]) -> FunctionModel:
@@ -96,9 +93,10 @@ def _tool_returns(messages: list[ModelMessage], tool_name: str) -> list[Any]:
 
 
 def test_multi_turn_conversation_threads_history(httpx_mock: HTTPXMock) -> None:
-    # get_table_structure and get_data each call getCubeMetadata/getCodeSets independently.
-    _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata", times=2)
-    _mock(httpx_mock, "GET", "getCodeSets", "code_sets", times=2)
+    # get_table_structure and get_data both need getCubeMetadata/getCodeSets, but the shared
+    # WdsClient caches them, so each is requested once.
+    _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
+    _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
     _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
     _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "normal_data_point")
 
@@ -176,7 +174,7 @@ def test_business_rule_error_triggers_a_retry_not_a_crash(httpx_mock: HTTPXMock)
     failure, e.g. a coordinate that resolves to no real series) must also become a
     ModelRetry the model can react to, not an unhandled exception that crashes the run -
     see agent/tools.py's _retry_on_value_error."""
-    _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata", times=2)
+    _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
     _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "nonexistent_coordinate")
     _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
@@ -225,10 +223,10 @@ def test_business_rule_error_triggers_a_retry_not_a_crash(httpx_mock: HTTPXMock)
 
 def test_end_to_end_normal_question(httpx_mock: HTTPXMock) -> None:
     """question-catalogue-eval.xlsx row 1: full chain including find_members."""
-    # get_table_structure, find_members, and get_data each call getCubeMetadata independently;
-    # get_table_structure and get_data each call getCodeSets independently.
-    _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata", times=3)
-    _mock(httpx_mock, "GET", "getCodeSets", "code_sets", times=2)
+    # get_table_structure, find_members, and get_data all need getCubeMetadata (and two of
+    # them getCodeSets), but the shared WdsClient caches both, so each is requested once.
+    _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
+    _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
     _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "normal_series_info")
     _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "normal_data_point")
 
