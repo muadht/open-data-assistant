@@ -35,6 +35,8 @@ FIXTURE_NAMES = (
     "census_cube_metadata",
     "gdp_cube_metadata",
     "suppressed_cube_metadata",
+    "batched_series_info",
+    "batched_data_point",
 )
 
 

@@ -109,8 +109,12 @@ Period = Annotated[LatestNPeriod | RangePeriod, Field(discriminator="type")]
 
 class GetDataInput(BaseModel):
     product_id: int
-    selections: dict[int, int] = Field(
-        description="dimensionPositionId -> memberId for every dimension of the table."
+    selections: dict[int, int | list[int]] = Field(
+        description=(
+            "dimensionPositionId -> memberId for every dimension of the table. At most one "
+            "dimension may map to a list of memberIds (up to 20), to fetch one series per "
+            "member in a single call."
+        )
     )
     period: Period
 

@@ -1,0 +1,53 @@
+{
+  "description": "getSeriesInfoFromCubePidCoord for two series in one request - unemployment rate for Alberta (10.7.1.1.1.1) then Ontario (7.7.1.1.1.1), table 14100287. Returned in request order this time, but that isn't guaranteed (see batched_data_point.json).",
+  "captured_at": "2026-10-09T00:00:00Z",
+  "source": "live",
+  "request": {
+    "method": "getSeriesInfoFromCubePidCoord",
+    "body": [
+      {
+        "productId": 14100287,
+        "coordinate": "10.7.1.1.1.1.0.0.0.0"
+      },
+      {
+        "productId": 14100287,
+        "coordinate": "7.7.1.1.1.1.0.0.0.0"
+      }
+    ]
+  },
+  "http_status": 200,
+  "body": [
+    {
+      "status": "SUCCESS",
+      "object": {
+        "responseStatusCode": 0,
+        "productId": 14100287,
+        "coordinate": "10.7.1.1.1.1.0.0.0.0",
+        "vectorId": 2064516,
+        "frequencyCode": 6,
+        "scalarFactorCode": 0,
+        "decimals": 1,
+        "terminated": 0,
+        "SeriesTitleEn": "Alberta;Unemployment rate;Total - Gender;15 years and over;Estimate;Seasonally adjusted",
+        "SeriesTitleFr": "Alberta;Taux de ch\u00f4mage;Total - Genre;15 ans et plus;Estimation;D\u00e9saisonnalis\u00e9es",
+        "memberUomCode": 239
+      }
+    },
+    {
+      "status": "SUCCESS",
+      "object": {
+        "responseStatusCode": 0,
+        "productId": 14100287,
+        "coordinate": "7.7.1.1.1.1.0.0.0.0",
+        "vectorId": 2063949,
+        "frequencyCode": 6,
+        "scalarFactorCode": 0,
+        "decimals": 1,
+        "terminated": 0,
+        "SeriesTitleEn": "Ontario;Unemployment rate;Total - Gender;15 years and over;Estimate;Seasonally adjusted",
+        "SeriesTitleFr": "Ontario;Taux de ch\u00f4mage;Total - Genre;15 ans et plus;Estimation;D\u00e9saisonnalis\u00e9es",
+        "memberUomCode": 239
+      }
+    }
+  ]
+}

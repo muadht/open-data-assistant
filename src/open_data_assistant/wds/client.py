@@ -190,9 +190,10 @@ class WdsClient:
     def get_data_from_vector_by_reference_period_range(
         self, vector_ids: list[int], *, start_ref_period: str, end_reference_period: str
     ) -> list[dict[str, Any]]:
-        """Only the single-vector-id form was verified against the live API; WDS's own
-        asymmetric parameter naming (startRefPeriod vs. endReferencePeriod) is deliberate -
-        that's genuinely how the endpoint is spelled, not a typo."""
+        """Several vector IDs in one call was live-verified 2026-10-09; results don't come
+        back in request order. WDS's own asymmetric parameter naming (startRefPeriod vs.
+        endReferencePeriod) is deliberate - that's genuinely how the endpoint is spelled, not
+        a typo."""
         return self._request(  # type: ignore[no-any-return]
             "GET",
             "/getDataFromVectorByReferencePeriodRange",
