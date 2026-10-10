@@ -59,6 +59,10 @@ class TableCandidate(BaseModel):
     frequency: str
     date_range: DateRange
     is_active: bool = Field(description="False if the table is archived/discontinued.")
+    last_released: str | None = Field(
+        default=None,
+        description="When StatCan last released data for this table, YYYY-MM-DD.",
+    )
     score: float = Field(description="Relative ranking score; not comparable across queries.")
 
 

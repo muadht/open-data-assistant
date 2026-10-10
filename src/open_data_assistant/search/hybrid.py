@@ -34,9 +34,11 @@ class SearchHit:
     source: dict[str, Any]
 
 
-def _hits(response: dict[str, Any]) -> list[SearchHit]:
+def hits_from_response(response: dict[str, Any]) -> list[SearchHit]:
+    # A query sorted by a field (e.g. browsing newest-first) has no relevance score:
+    # OpenSearch returns `_score: null`, which becomes 0.0 here.
     return [
-        SearchHit(doc_id=h["_id"], score=h["_score"], source=h["_source"])
+        SearchHit(doc_id=h["_id"], score=h["_score"] or 0.0, source=h["_source"])
         for h in response["hits"]["hits"]
     ]
 
@@ -50,7 +52,7 @@ def bm25_search(
 ) -> list[SearchHit]:
     query = {"bool": {"must": build_lexical_query(parsed), "filter": filters}}
     response = client.search(index=index_name, body={"size": k, "query": query})
-    return _hits(response)
+    return hits_from_response(response)
 
 
 def knn_search(
@@ -68,7 +70,7 @@ def knn_search(
     response = client.search(
         index=index_name, body={"size": k, "query": {"knn": {"embedding": knn}}}
     )
-    return _hits(response)
+    return hits_from_response(response)
 
 
 def hybrid_search(
@@ -125,4 +127,4 @@ def similar_search(
             "_source": {"excludes": ["embedding"]},
         },
     )
-    return [hit for hit in _hits(response) if hit.doc_id != doc_id][:k]
+    return [hit for hit in hits_from_response(response) if hit.doc_id != doc_id][:k]

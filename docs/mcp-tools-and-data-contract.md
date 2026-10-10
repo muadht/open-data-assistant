@@ -20,6 +20,8 @@ Before ranking, the query string goes through a deliberately crude regex extract
 - `filters` (optional): subject, frequency, archived/active — merged with whatever the regex pass already extracted.
 - Returns a ranked list of `TableCandidate`, each with enough detail for the LLM to pick one or ask the user to disambiguate — not the full table structure (that's `get_table_structure`).
 
+`last_released` is when StatCan last released data for the table (the catalogue's `releaseTime`, already stored in the index), or `null` if unknown (#57).
+
 Implemented in `open_data_assistant.mcp.tools.search_tables`, backed by the promoted hybrid search in `open_data_assistant.search.hybrid` (tickets #6/#7 — no longer a gap).
 
 ```json
@@ -30,6 +32,7 @@ TableCandidate {
   "frequency": "Monthly",
   "date_range": { "start": "1976-01-01", "end": "2025-09-01" },
   "is_active": true,
+  "last_released": "2026-09-05",
   "score": 0.91
 }
 ```
