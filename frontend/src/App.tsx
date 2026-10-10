@@ -1,4 +1,4 @@
-import { ArrowUp, Square, SquarePen, Table2, X } from 'lucide-react'
+import { ArrowUp, ListTree, Square, SquarePen, Table2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '@/chat/chatState'
 import { nextExamples } from '@/chat/examples'
@@ -11,6 +11,7 @@ import { useChat } from '@/chat/useChat'
 import { AssistantReply } from '@/components/chat/AssistantReply'
 import { BrowsePage } from '@/components/tables/BrowsePage'
 import { TableDrawer } from '@/components/tables/TableDrawer'
+import { TablePanel } from '@/components/tables/TablePanel'
 import { Button } from '@/components/ui/button'
 import {
   ChatContainerContent,
@@ -29,15 +30,17 @@ import {
 const firstExamples = nextExamples()
 
 // One centred column, like Claude/ChatGPT: charts (#16) and exports (#17) live inside each
-// answer, not in a side panel.
+// answer. The only side panel is a table's details (#70), opened on demand.
 export default function App({ transport }: { transport?: ChatTransport }) {
   const { messages, isStreaming, send, stop, reset } = useChat(transport)
   const [input, setInput] = useState('')
   const [examples, setExamples] = useState(firstExamples)
   const inputAreaRef = useRef<HTMLDivElement>(null)
   const { route, navigate } = useHashRoute()
-  // The table whose details drawer is open, from the browse page or a related-table chip.
+  // The table whose details are open: in a drawer over the browse page, and in a panel
+  // beside the chat (#70). Kept apart so one view's table doesn't open in the other.
   const [drawerTable, setDrawerTable] = useState<number | null>(null)
+  const [panelTable, setPanelTable] = useState<number | null>(null)
   // "Ask about this table": sent with every message until removed (#56).
   const [pinned, setPinned] = useState<{
     productId: number
@@ -60,6 +63,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
     reset()
     setInput('')
     setPinned(null)
+    setPanelTable(null)
     setExamples(nextExamples())
   }
 
@@ -77,6 +81,15 @@ export default function App({ transport }: { transport?: ChatTransport }) {
               ({tableNumber(pinned.productId)})
             </span>
           </span>
+          <button
+            type="button"
+            onClick={() => setPanelTable(pinned.productId)}
+            aria-label="View structure of this table"
+            title="View structure"
+            className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ListTree className="size-3.5" />
+          </button>
           <button
             type="button"
             onClick={() => setPinned(null)}
@@ -178,69 +191,80 @@ export default function App({ transport }: { transport?: ChatTransport }) {
             onOpenTable={setDrawerTable}
           />
         </main>
-      ) : messages.length === 0 ? (
-        <main className="flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-24">
-          <div className="space-y-1 text-center">
-            <h2 className="text-2xl font-semibold">
-              What would you like to know?
-            </h2>
-            <p className="text-muted-foreground">
-              Ask about Statistics Canada data in plain language. Every answer
-              cites its source.
-            </p>
-          </div>
-          <div className="w-full max-w-3xl">{prompt}</div>
-          <div className="flex max-w-3xl flex-wrap justify-center gap-2">
-            {examples.map((example) => (
-              <Button
-                key={example}
-                variant="outline"
-                size="sm"
-                className="rounded-full"
-                onClick={() => submit(example)}
-              >
-                {example}
-              </Button>
-            ))}
-          </div>
-        </main>
       ) : (
-        <main className="flex min-h-0 flex-1 flex-col">
-          <ChatContainerRoot className="flex-1">
-            <ChatContainerContent
-              className="mx-auto w-full max-w-3xl gap-8 px-4 py-6"
-              role="log"
-              aria-live="polite"
-              aria-busy={isStreaming}
-            >
-              {messages.map((message, index) =>
-                message.role === 'user' ? (
-                  <Message key={message.id} className="justify-end">
-                    <MessageContent className="max-w-[85%] rounded-3xl bg-muted px-4 py-2">
-                      {message.text}
-                    </MessageContent>
-                  </Message>
-                ) : (
-                  <AssistantReply
-                    key={message.id}
-                    message={message}
-                    active={isStreaming && index === messages.length - 1}
-                    onSend={submit}
-                    onRetry={() => submit(previousQuestion(messages, index))}
-                    onOpenTable={setDrawerTable}
-                  />
-                ),
-              )}
-            </ChatContainerContent>
-          </ChatContainerRoot>
-          <div className="mx-auto w-full max-w-3xl px-4 pb-4">
-            {prompt}
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              Answers use Statistics Canada data only. Check the sources for
-              each answer.
-            </p>
-          </div>
-        </main>
+        <div className="flex min-h-0 flex-1">
+          {messages.length === 0 ? (
+            <main className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-24">
+              <div className="space-y-1 text-center">
+                <h2 className="text-2xl font-semibold">
+                  What would you like to know?
+                </h2>
+                <p className="text-muted-foreground">
+                  Ask about Statistics Canada data in plain language. Every
+                  answer cites its source.
+                </p>
+              </div>
+              <div className="w-full max-w-3xl">{prompt}</div>
+              <div className="flex max-w-3xl flex-wrap justify-center gap-2">
+                {examples.map((example) => (
+                  <Button
+                    key={example}
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => submit(example)}
+                  >
+                    {example}
+                  </Button>
+                ))}
+              </div>
+            </main>
+          ) : (
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <ChatContainerRoot className="flex-1">
+                <ChatContainerContent
+                  className="mx-auto w-full max-w-3xl gap-8 px-4 py-6"
+                  role="log"
+                  aria-live="polite"
+                  aria-busy={isStreaming}
+                >
+                  {messages.map((message, index) =>
+                    message.role === 'user' ? (
+                      <Message key={message.id} className="justify-end">
+                        <MessageContent className="max-w-[85%] rounded-3xl bg-muted px-4 py-2">
+                          {message.text}
+                        </MessageContent>
+                      </Message>
+                    ) : (
+                      <AssistantReply
+                        key={message.id}
+                        message={message}
+                        active={isStreaming && index === messages.length - 1}
+                        onSend={submit}
+                        onRetry={() =>
+                          submit(previousQuestion(messages, index))
+                        }
+                        onOpenTable={setPanelTable}
+                      />
+                    ),
+                  )}
+                </ChatContainerContent>
+              </ChatContainerRoot>
+              <div className="mx-auto w-full max-w-3xl px-4 pb-4">
+                {prompt}
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  Answers use Statistics Canada data only. Check the sources for
+                  each answer.
+                </p>
+              </div>
+            </main>
+          )}
+          <TablePanel
+            productId={panelTable}
+            onClose={() => setPanelTable(null)}
+            onAsk={setPinned}
+          />
+        </div>
       )}
 
       <TableDrawer
