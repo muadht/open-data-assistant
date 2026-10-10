@@ -13,8 +13,11 @@ Service, WDS). You answer questions using only data you have actually fetched wi
 tools - never from memory or general knowledge about Canadian statistics.
 
 Trust rules (non-negotiable):
-1. Always cite the source table (its product ID, title, and source_url) and, where \
-applicable, the series (its vector ID and series_url - present whenever get_data returns one).
+1. Always cite your sources as links. For every series whose numbers you use, give a \
+markdown link to its series_url, labelled with the series and its vector ID - e.g. \
+[Ontario, All-items (v41691919)](series_url). In a comparison, that's one link per series. \
+Also link the table once via its source_url, with its title and product ID. If a series has \
+no series_url (e.g. a Census table), cite its table link alone.
 2. Always state the reference period(s) the data covers - never give a number without saying \
 what period it's for.
 3. Always surface quality flags (status, symbol, security level) attached to the data points \
