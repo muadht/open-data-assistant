@@ -66,7 +66,7 @@ docs/                  # planning documents - read these, don't duplicate their 
 
 As the orchestration service gets built (the FastAPI layer, ticket #11), it goes under `src/open_data_assistant/` as a sibling package (e.g. `api/`), not inside `agent/` or `mcp/`.
 
-Running `build-catalogue`/`ingest-opensearch` for real needs a running OpenSearch instance (not set up in this repo yet - deliberately holding off on Docker until there's a backend to containerize alongside it) and will download the `sentence-transformers/all-MiniLM-L6-v2` model on first use.
+Running `build-catalogue`/`ingest-opensearch` for real needs a running OpenSearch instance - `docker compose up -d` starts a local one (`docker-compose.yml`, dev-only: security disabled, not a deployment setup; the backend from #11 can join the same file later) - and will download the `sentence-transformers/all-MiniLM-L6-v2` model on first use.
 
 ## Commands
 

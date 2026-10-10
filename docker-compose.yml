@@ -1,0 +1,19 @@
+# Dev-only: a local OpenSearch for search_tables. Security is disabled - never use this as-is
+# for a deployment (hosting is still an open item, see docs/architecture-overview.md).
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      # Required by the security plugin bootstrap even with the plugin
+      # disabled (OpenSearch 2.12+) - unused since security is off.
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=Statcan_Dev_Only_2026!
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+
+volumes:
+  opensearch-data:
