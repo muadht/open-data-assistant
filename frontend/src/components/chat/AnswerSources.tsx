@@ -1,4 +1,4 @@
-import { AlertTriangle, ExternalLink, ListTree } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import {
   formatPeriods,
   type CitedSource,
@@ -85,31 +85,18 @@ export function AnswerSources({
       <div className="space-y-5">
         {groups.map((group) => (
           <div key={group.table.productId} className="space-y-2">
-            <a
-              href={group.table.link}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => onOpenTable(group.table.productId)}
+              title="View table details"
               // Inline text, not flex: a long title wraps like a sentence, and the table
-              // number stays together with the icon instead of breaking onto two lines.
-              className="leading-snug font-medium text-foreground hover:underline"
+              // number stays together instead of breaking onto two lines.
+              className="text-left leading-snug font-medium text-foreground hover:underline"
             >
               {group.table.title}{' '}
               <span className="whitespace-nowrap text-muted-foreground">
                 ({tableNumber(group.table.productId)})
-                <ExternalLink
-                  className="ml-1 inline size-3 align-baseline"
-                  aria-hidden
-                />
               </span>
-            </a>
-            <button
-              type="button"
-              onClick={() => onOpenTable(group.table.productId)}
-              aria-label={`View structure of ${group.table.title}`}
-              className="ml-2 inline-flex items-center gap-1 rounded px-1 align-baseline text-xs hover:bg-muted hover:text-foreground"
-            >
-              <ListTree className="size-3" aria-hidden />
-              View structure
             </button>
             {group.shared.length > 0 && (
               <p className="text-xs">All series: {group.shared.join(' · ')}</p>

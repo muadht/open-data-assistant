@@ -252,10 +252,12 @@ describe('Table structure in the chat', () => {
     return screen.findByRole('region', { name: 'Sources' })
   }
 
-  it('opens beside the chat from a source, and closes with ✕ or Escape', async () => {
+  it("opens beside the chat from a source table's name, and closes with ✕ or Escape", async () => {
     const sources = await answered()
     fireEvent.click(
-      within(sources).getAllByRole('button', { name: /^View structure of/ })[0],
+      within(sources).getByRole('button', {
+        name: /^Labour force characteristics/,
+      }),
     )
 
     const panel = await screen.findByRole('complementary')
@@ -272,7 +274,9 @@ describe('Table structure in the chat', () => {
     expect(screen.queryByRole('complementary')).toBeNull()
 
     fireEvent.click(
-      within(sources).getAllByRole('button', { name: /^View structure of/ })[0],
+      within(sources).getByRole('button', {
+        name: /^Labour force characteristics/,
+      }),
     )
     await screen.findByRole('complementary')
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -282,7 +286,9 @@ describe('Table structure in the chat', () => {
   it('shows one table at a time, and asks about it from the panel', async () => {
     const sources = await answered()
     fireEvent.click(
-      within(sources).getAllByRole('button', { name: /^View structure of/ })[0],
+      within(sources).getByRole('button', {
+        name: /^Labour force characteristics/,
+      }),
     )
     await screen.findByRole('complementary')
 
@@ -302,13 +308,11 @@ describe('Table structure in the chat', () => {
     // The panel stays open for reference while asking.
     expect(screen.getByRole('complementary')).toBeTruthy()
 
-    // The pinned chip opens it again after closing.
+    // The pinned table's name opens it again after closing.
     fireEvent.click(
       within(panel).getByRole('button', { name: 'Close table details' }),
     )
-    fireEvent.click(
-      screen.getByRole('button', { name: 'View structure of this table' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: /^Asking about:/ }))
     expect(await screen.findByRole('complementary')).toBeTruthy()
   })
 
@@ -316,7 +320,9 @@ describe('Table structure in the chat', () => {
     wide = false
     const sources = await answered()
     fireEvent.click(
-      within(sources).getAllByRole('button', { name: /^View structure of/ })[0],
+      within(sources).getByRole('button', {
+        name: /^Labour force characteristics/,
+      }),
     )
     const drawer = await screen.findByRole('dialog')
     expect(await within(drawer).findByText('Canada')).toBeTruthy()
