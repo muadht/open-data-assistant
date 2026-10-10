@@ -123,9 +123,13 @@ describe('Browse tables', () => {
       ),
     ).toBeTruthy()
 
-    const filters = screen.getByRole('complementary', { name: 'Filters' })
+    // Filters are one row of compact buttons, each opening a menu of options with counts.
+    const filters = screen.getByRole('group', { name: 'Filters' })
+    fireEvent.click(within(filters).getByRole('button', { name: 'Subject' }))
     fireEvent.click(
-      within(filters).getByRole('button', { name: /Prices and price indexes/ }),
+      await screen.findByRole('button', {
+        name: /Prices and price indexes\s*43/,
+      }),
     )
     await waitFor(() =>
       expect(requested().at(-1)).toBe(
@@ -135,6 +139,17 @@ describe('Browse tables', () => {
     expect(window.location.hash).toBe(
       '#/browse?subject=Prices+and+price+indexes',
     )
+
+    // The button now shows the chosen subject, with a ✕ to clear it.
+    expect(
+      within(filters).getByRole('button', {
+        name: 'Subject: Prices and price indexes',
+      }),
+    ).toBeTruthy()
+    fireEvent.click(
+      within(filters).getByRole('button', { name: 'Clear subject' }),
+    )
+    await waitFor(() => expect(window.location.hash).toBe('#/browse'))
   })
 
   it('opens a table in the drawer and asks about it from the chat', async () => {

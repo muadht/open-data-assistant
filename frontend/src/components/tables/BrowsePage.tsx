@@ -1,7 +1,12 @@
-import { Loader2, Search, X } from 'lucide-react'
+import { ChevronDown, Loader2, Search, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import type { TableCandidate } from '@/chat/events'
 import { Button } from '@/components/ui/button'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   EMPTY_BROWSE,
   searchTables,
@@ -71,8 +76,14 @@ export function BrowsePage({ params, onParamsChange, onOpenTable }: Props) {
     params.to ||
     params.includeArchived
 
+  const facets = current?.response.facets
+  const years =
+    params.from || params.to
+      ? `${params.from || '…'}–${params.to || '…'}`
+      : null
+
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
+    <div className="mx-auto w-full max-w-4xl space-y-4 px-4 py-6">
       <form
         role="search"
         className="flex gap-2"
@@ -99,148 +110,208 @@ export function BrowsePage({ params, onParamsChange, onOpenTable }: Props) {
         </Button>
       </form>
 
-      <div className="grid gap-8 md:grid-cols-[15rem_minmax(0,1fr)]">
-        <aside aria-label="Filters" className="space-y-6 text-sm">
+      {/* One row of filters: each a compact button showing its value, opening a menu. */}
+      <div
+        role="group"
+        aria-label="Filters"
+        className="flex flex-wrap items-center gap-2 text-sm"
+      >
+        <FilterMenu
+          label="Subject"
+          value={params.subject.split('/').at(-1) || null}
+          onClear={() => set({ subject: '' })}
+        >
+          {params.subject && (
+            <SubjectTrail
+              subject={params.subject}
+              onPick={(subject) => set({ subject })}
+            />
+          )}
+          {facets?.subjects.map((f) => (
+            <FilterOption
+              key={f.value}
+              label={f.value.split('/').at(-1)!}
+              count={f.count}
+              onClick={() => set({ subject: f.value })}
+            />
+          ))}
+          {facets && facets.subjects.length === 0 && (
+            <p className="px-2 py-1 text-muted-foreground">
+              No narrower subjects.
+            </p>
+          )}
+        </FilterMenu>
+        <FilterMenu
+          label="Frequency"
+          value={params.frequency || null}
+          onClear={() => set({ frequency: '' })}
+        >
+          {facets?.frequencies.map((f) => (
+            <FilterOption
+              key={f.value}
+              label={f.value}
+              count={f.count}
+              selected={params.frequency === f.value}
+              onClick={() =>
+                set({ frequency: params.frequency === f.value ? '' : f.value })
+              }
+            />
+          ))}
+        </FilterMenu>
+        <FilterMenu
+          label="Years"
+          value={years}
+          onClear={() => set({ from: '', to: '' })}
+        >
+          <p className="px-2 pb-1 text-xs text-muted-foreground">
+            Tables covering any year in this range
+          </p>
+          <YearRange
+            from={params.from}
+            to={params.to}
+            onChange={(from, to) => set({ from, to })}
+          />
+        </FilterMenu>
+        <label className="flex items-center gap-1.5 px-2 text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={params.includeArchived}
+            onChange={(e) => set({ includeArchived: e.target.checked })}
+          />
+          Include archived
+        </label>
+        <label className="ml-auto flex items-center gap-2 text-muted-foreground">
+          Sort
+          <select
+            // Without search text there's nothing to rank by relevance.
+            value={params.q ? params.sort : 'updated'}
+            onChange={(e) =>
+              set({ sort: e.target.value as BrowseParams['sort'] })
+            }
+            className="rounded-md border bg-background px-2 py-1 text-foreground"
+          >
+            {params.q && <option value="relevance">Most relevant</option>}
+            <option value="updated">Recently updated</option>
+          </select>
+        </label>
+      </div>
+
+      <section aria-label="Results" className="space-y-3">
+        <p className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span>
+            {current &&
+              (params.q
+                ? `Top ${current.response.total} matches`
+                : `${current.response.total.toLocaleString('en-CA')} ${current.response.total === 1 ? 'table' : 'tables'}`)}
+          </span>
           {filtered && (
             <button
               type="button"
               onClick={() => onParamsChange({ ...EMPTY_BROWSE, q: params.q })}
-              className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+              className="hover:text-foreground hover:underline"
             >
-              <X className="size-3.5" aria-hidden /> Clear filters
+              Clear filters
             </button>
           )}
-          <FilterGroup title="Subject">
-            {params.subject && (
-              <SubjectTrail
-                subject={params.subject}
-                onPick={(subject) => set({ subject })}
-              />
-            )}
-            {current?.response.facets.subjects.map((f) => (
-              <FilterOption
-                key={f.value}
-                label={f.value.split('/').at(-1)!}
-                count={f.count}
-                onClick={() => set({ subject: f.value })}
-              />
-            ))}
-          </FilterGroup>
-          <FilterGroup title="Frequency">
-            {current?.response.facets.frequencies.map((f) => (
-              <FilterOption
-                key={f.value}
-                label={f.value}
-                count={f.count}
-                selected={params.frequency === f.value}
-                onClick={() =>
-                  set({
-                    frequency: params.frequency === f.value ? '' : f.value,
-                  })
-                }
-              />
-            ))}
-          </FilterGroup>
-          <FilterGroup title="Years covered">
-            <YearRange
-              from={params.from}
-              to={params.to}
-              onChange={(from, to) => set({ from, to })}
-            />
-          </FilterGroup>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={params.includeArchived}
-              onChange={(e) => set({ includeArchived: e.target.checked })}
-            />
-            Include archived tables
-            {current && (
-              <span className="text-muted-foreground">
-                ({current.response.facets.archived})
-              </span>
-            )}
-          </label>
-        </aside>
+        </p>
 
-        <section aria-label="Results" className="min-w-0 space-y-3">
-          <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
-            <span>
-              {current &&
-                (params.q
-                  ? `Top ${current.response.total} matches`
-                  : `${current.response.total.toLocaleString('en-CA')} ${current.response.total === 1 ? 'table' : 'tables'}`)}
-            </span>
-            <label className="flex items-center gap-2">
-              Sort
-              <select
-                // Without search text there's nothing to rank by relevance.
-                value={params.q ? params.sort : 'updated'}
-                onChange={(e) =>
-                  set({ sort: e.target.value as BrowseParams['sort'] })
-                }
-                className="rounded-md border bg-background px-2 py-1"
+        {error && (
+          <p role="alert" className="text-destructive">
+            {error}
+          </p>
+        )}
+        {current?.pages.length === 0 && (
+          <p className="py-8 text-center text-muted-foreground">
+            No tables match. Try fewer filters or different words.
+          </p>
+        )}
+        <ul className="space-y-2">
+          {current?.pages.map((table) => (
+            <li key={table.product_id}>
+              <TableCard table={table} onOpen={onOpenTable} />
+            </li>
+          ))}
+        </ul>
+        {loading && (
+          <p className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" aria-hidden /> Loading…
+          </p>
+        )}
+        {current &&
+          !loading &&
+          current.pages.length < current.response.total && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setPage({ key, number: pageNumber + 1 })}
               >
-                {params.q && <option value="relevance">Most relevant</option>}
-                <option value="updated">Recently updated</option>
-              </select>
-            </label>
-          </div>
-
-          {error && (
-            <p role="alert" className="text-destructive">
-              {error}
-            </p>
+                Load more
+              </Button>
+            </div>
           )}
-          {current?.pages.length === 0 && (
-            <p className="py-8 text-center text-muted-foreground">
-              No tables match. Try fewer filters or different words.
-            </p>
-          )}
-          <ul className="space-y-2">
-            {current?.pages.map((table) => (
-              <li key={table.product_id}>
-                <TableCard table={table} onOpen={onOpenTable} />
-              </li>
-            ))}
-          </ul>
-          {loading && (
-            <p className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" aria-hidden /> Loading…
-            </p>
-          )}
-          {current &&
-            !loading &&
-            current.pages.length < current.response.total && (
-              <div className="flex justify-center pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setPage({ key, number: pageNumber + 1 })}
-                >
-                  Load more
-                </Button>
-              </div>
-            )}
-        </section>
-      </div>
+      </section>
     </div>
   )
 }
 
-function FilterGroup({
-  title,
+/** One filter as a compact button: its label, or its value once set (with ✕ to clear),
+ * opening a small menu of options. */
+function FilterMenu({
+  label,
+  value,
+  onClear,
   children,
 }: {
-  title: string
+  label: string
+  value: string | null
+  onClear: () => void
   children: ReactNode
 }) {
+  const [open, setOpen] = useState(false)
   return (
-    <div className="space-y-1">
-      <h3 className="pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        {title}
-      </h3>
-      {children}
-    </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <span
+        className={cn(
+          'inline-flex items-center rounded-full border',
+          value && 'border-foreground/30 bg-muted',
+        )}
+      >
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-full py-1 pr-2 pl-3 hover:text-foreground"
+          >
+            <span className={cn(!value && 'text-muted-foreground')}>
+              {value ? `${label}: ${value}` : label}
+            </span>
+            <ChevronDown
+              className="size-3.5 text-muted-foreground"
+              aria-hidden
+            />
+          </button>
+        </PopoverTrigger>
+        {value && (
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label={`Clear ${label.toLowerCase()}`}
+            className="mr-1 rounded-full p-0.5 text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </span>
+      <PopoverContent
+        align="start"
+        className="max-h-80 w-72 overflow-y-auto p-1 text-sm"
+        // Picking an option changes the filters; close the menu as it does.
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button')) setOpen(false)
+        }}
+      >
+        {children}
+      </PopoverContent>
+    </Popover>
   )
 }
 
