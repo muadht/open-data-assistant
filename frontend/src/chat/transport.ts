@@ -1,6 +1,8 @@
 export interface ChatRequest {
   session_id: string | null
   message: string
+  /** A table the user picked on the browse page (#56): answer from it. */
+  table_id?: number
 }
 
 /** Sends a chat request and returns the raw response; swapped for a mock in mock mode and

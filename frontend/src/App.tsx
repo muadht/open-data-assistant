@@ -1,10 +1,16 @@
-import { ArrowUp, Square, SquarePen } from 'lucide-react'
+import { ArrowUp, Square, SquarePen, Table2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '@/chat/chatState'
 import { nextExamples } from '@/chat/examples'
+import { tableNumber } from '@/chat/tables'
 import type { ChatTransport } from '@/chat/transport'
+import { browseParamsFrom, browseSearchParams } from '@/tables/api'
+import { useHashRoute, type View } from '@/tables/useHashRoute'
+import { cn } from '@/lib/utils'
 import { useChat } from '@/chat/useChat'
 import { AssistantReply } from '@/components/chat/AssistantReply'
+import { BrowsePage } from '@/components/tables/BrowsePage'
+import { TableDrawer } from '@/components/tables/TableDrawer'
 import { Button } from '@/components/ui/button'
 import {
   ChatContainerContent,
@@ -29,6 +35,14 @@ export default function App({ transport }: { transport?: ChatTransport }) {
   const [input, setInput] = useState('')
   const [examples, setExamples] = useState(firstExamples)
   const inputAreaRef = useRef<HTMLDivElement>(null)
+  const { route, navigate } = useHashRoute()
+  // The table whose details drawer is open, from the browse page or a related-table chip.
+  const [drawerTable, setDrawerTable] = useState<number | null>(null)
+  // "Ask about this table": sent with every message until removed (#56).
+  const [pinned, setPinned] = useState<{
+    productId: number
+    title: string
+  } | null>(null)
 
   // Return focus to the input when a reply finishes, so the next question can be typed
   // straight away.
@@ -38,18 +52,41 @@ export default function App({ transport }: { transport?: ChatTransport }) {
 
   const submit = (text: string) => {
     if (!text.trim() || isStreaming) return
-    send(text)
+    send(text, pinned?.productId)
     setInput('')
   }
 
   const newChat = () => {
     reset()
     setInput('')
+    setPinned(null)
     setExamples(nextExamples())
   }
 
   const prompt = (
-    <div ref={inputAreaRef}>
+    <div ref={inputAreaRef} className="space-y-2">
+      {pinned && (
+        <div className="flex w-fit max-w-full items-center gap-2 rounded-full border bg-muted/50 py-1 pr-1 pl-3 text-sm">
+          <Table2
+            className="size-4 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+          <span className="truncate">
+            Asking about: {pinned.title}{' '}
+            <span className="text-muted-foreground">
+              ({tableNumber(pinned.productId)})
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setPinned(null)}
+            aria-label="Stop asking about this table"
+            className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
       <PromptInput
         value={input}
         onValueChange={setInput}
@@ -93,20 +130,55 @@ export default function App({ transport }: { transport?: ChatTransport }) {
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
-      <header className="flex items-center justify-between px-4 py-3">
+      <header className="flex items-center justify-between gap-4 px-4 py-3">
         <h1 className="font-semibold">StatCan Data Assistant</h1>
+        <nav
+          aria-label="Views"
+          className="flex rounded-full border p-0.5 text-sm"
+        >
+          {(
+            [
+              ['chat', 'Chat'],
+              ['browse', 'Browse tables'],
+            ] as [View, string][]
+          ).map(([view, label]) => (
+            <button
+              key={view}
+              type="button"
+              aria-current={route.view === view ? 'page' : undefined}
+              onClick={() => navigate(view)}
+              className={cn(
+                'rounded-full px-3 py-1 text-muted-foreground hover:text-foreground',
+                route.view === view && 'bg-muted font-medium text-foreground',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
         <Button
           variant="ghost"
           size="sm"
           onClick={newChat}
-          disabled={messages.length === 0}
+          disabled={messages.length === 0 && !pinned}
+          className={cn(route.view !== 'chat' && 'invisible')}
         >
           <SquarePen aria-hidden />
           New chat
         </Button>
       </header>
 
-      {messages.length === 0 ? (
+      {route.view === 'browse' ? (
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <BrowsePage
+            params={browseParamsFrom(route.search)}
+            onParamsChange={(params) =>
+              navigate('browse', browseSearchParams(params))
+            }
+            onOpenTable={setDrawerTable}
+          />
+        </main>
+      ) : messages.length === 0 ? (
         <main className="flex flex-1 flex-col items-center justify-center gap-6 px-4 pb-24">
           <div className="space-y-1 text-center">
             <h2 className="text-2xl font-semibold">
@@ -155,6 +227,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
                     active={isStreaming && index === messages.length - 1}
                     onSend={submit}
                     onRetry={() => submit(previousQuestion(messages, index))}
+                    onOpenTable={setDrawerTable}
                   />
                 ),
               )}
@@ -169,6 +242,16 @@ export default function App({ transport }: { transport?: ChatTransport }) {
           </div>
         </main>
       )}
+
+      <TableDrawer
+        productId={drawerTable}
+        onClose={() => setDrawerTable(null)}
+        onAsk={(table) => {
+          setPinned(table)
+          setDrawerTable(null)
+          navigate('chat')
+        }}
+      />
     </div>
   )
 }

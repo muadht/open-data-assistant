@@ -29,9 +29,16 @@ interface Props {
   active: boolean
   onSend: (text: string) => void
   onRetry: () => void
+  onOpenTable: (productId: number) => void
 }
 
-export function AssistantReply({ message, active, onSend, onRetry }: Props) {
+export function AssistantReply({
+  message,
+  active,
+  onSend,
+  onRetry,
+  onOpenTable,
+}: Props) {
   const { outcome } = message
   return (
     <Message className="flex-col items-stretch gap-5">
@@ -40,7 +47,10 @@ export function AssistantReply({ message, active, onSend, onRetry }: Props) {
       {outcome?.kind === 'answer' && (
         <>
           <AnswerBody answer={outcome.answer} />
-          <RelatedTables tables={outcome.answer.related_tables ?? []} />
+          <RelatedTables
+            tables={outcome.answer.related_tables ?? []}
+            onOpen={onOpenTable}
+          />
         </>
       )}
 
