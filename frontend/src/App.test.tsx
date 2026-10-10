@@ -10,6 +10,7 @@ import {
 } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import App from './App'
+import { EXAMPLE_QUESTIONS } from './chat/examples'
 import { createMockTransport } from './chat/transport'
 
 beforeAll(() => {
@@ -38,11 +39,7 @@ function ask(question: string) {
 describe('App with mock streams', () => {
   it('shows a comparison answer with a source, period and flags for each series', async () => {
     renderApp()
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: "How does Ontario's CPI compare with Alberta's?",
-      }),
-    )
+    ask("How does Ontario's CPI compare with Alberta's?")
 
     // One line chart for the comparison; its table view lists the same values.
     const chart = await screen.findByRole('figure')
@@ -134,6 +131,16 @@ describe('App with mock streams', () => {
     // The question is sent again and gets its own reply.
     await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2))
     expect(screen.getAllByText('show me an error')).toHaveLength(2)
+  })
+
+  it('shows three example questions from the pool, and clicking one asks it', async () => {
+    renderApp()
+    const shown = EXAMPLE_QUESTIONS.filter((q) =>
+      screen.queryByRole('button', { name: q }),
+    )
+    expect(shown).toHaveLength(3)
+    fireEvent.click(screen.getByRole('button', { name: shown[0] }))
+    expect(await screen.findByText(shown[0], { selector: 'div' })).toBeTruthy()
   })
 
   it('"New chat" clears the conversation', async () => {
