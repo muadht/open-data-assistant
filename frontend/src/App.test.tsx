@@ -58,18 +58,32 @@ describe('App with mock streams', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(14) // header + 13 months
     expect(within(table).getByText('179.2')).toBeTruthy()
 
-    // A citation chip per series; clicking one shows its period, flags and notes.
-    const sources = await screen.findByRole('region', { name: 'Sources' })
-    const alberta = within(sources).getByRole('button', {
-      name: /Alberta · All-items/,
+    // Each number in the text carries a numbered citation linking to its source (#63).
+    const albertaMarker = screen.getByRole('link', {
+      name: 'Source 1: Alberta, 2026-08-01',
     })
+    expect(albertaMarker.textContent).toBe('1')
+    expect(albertaMarker.getAttribute('href')).toContain(
+      'vectorNumbers=v41692327',
+    )
+    expect(albertaMarker.getAttribute('target')).toBe('_blank')
     expect(
-      within(sources).getByRole('button', { name: /Ontario · All-items/ }),
+      screen.getByRole('link', { name: 'Source 2: Ontario, 2026-08-01' }),
     ).toBeTruthy()
-    fireEvent.click(alberta)
-    expect(alberta.getAttribute('aria-expanded')).toBe('true')
-    expect(within(sources).getByText('2026-08-01')).toBeTruthy()
-    expect(within(sources).getByText('None')).toBeTruthy()
+
+    // Sources collapse to one line; expanded, a numbered list named by what differs, with
+    // the shared members and StatCan's notes once per table.
+    expect(screen.getByText('2 sources')).toBeTruthy()
+    const sources = screen.getByRole('region', { name: 'Sources' })
+    expect(within(sources).getByText('All series: All-items')).toBeTruthy()
+    expect(
+      within(within(sources).getAllByRole('list')[0])
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      '1.Alberta · v41692327 · 2026-08-01',
+      '2.Ontario · v41691919 · 2026-08-01',
+    ])
     expect(within(sources).getByText(/StatCan notes \(\d+\)/)).toBeTruthy()
 
     // Steps collapse to a summary once done; the recovered failed step is progress, not

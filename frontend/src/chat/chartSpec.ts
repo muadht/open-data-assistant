@@ -1,5 +1,6 @@
 import { pointFlags } from './answerDetails'
 import type { DataPoint, DataResult } from './events'
+import { distinguishingNames, sharedMembers } from './seriesNames'
 
 // When an answer gets a chart, and which kind, decided from the shape of its data alone -
 // the model never chooses or draws charts (docs/architecture-overview.md, "answer -> chart").
@@ -57,7 +58,7 @@ export function chartSpecs(results: DataResult[]): ChartSpec[] {
 }
 
 function specFor(unit: string, results: DataResult[]): ChartSpec | null {
-  const names = seriesNames(results)
+  const names = distinguishingNames(results)
   const title = titleFor(results)
   const longest = Math.max(...results.map((r) => r.series.length))
 
@@ -106,32 +107,10 @@ function toChartPoint(point: DataPoint): ChartPoint {
   return { value: point.value, flags: pointFlags(point, false) }
 }
 
-/** Names that tell the series apart: the members that differ between them (e.g. just
- * "Alberta" / "Ontario"), or all members for a single series. */
-function seriesNames(results: DataResult[]): string[] {
-  const dimensions = Object.keys(results[0].members)
-  const varying =
-    results.length === 1
-      ? dimensions
-      : dimensions.filter(
-          (d) => new Set(results.map((r) => r.members[d])).size > 1,
-        )
-  return results.map((r) =>
-    varying.length
-      ? varying.map((d) => r.members[d]).join(' · ')
-      : r.series_title_en,
-  )
-}
-
 /** What every series in the chart has in common, e.g. "All-items" for a CPI comparison. */
 function titleFor(results: DataResult[]): string {
-  if (results.length === 1) return results[0].title_en
-  const shared = Object.keys(results[0].members).filter(
-    (d) => new Set(results.map((r) => r.members[d])).size === 1,
-  )
-  return shared.length
-    ? shared.map((d) => results[0].members[d]).join(' · ')
-    : results[0].title_en
+  const shared = sharedMembers(results)
+  return shared.length ? shared.join(' · ') : results[0].title_en
 }
 
 /** Period labels from the data itself: StatCan dates every period by its first day, so if

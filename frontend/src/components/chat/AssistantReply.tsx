@@ -7,9 +7,11 @@ import {
   Info,
   RotateCcw,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Components } from 'react-markdown'
 import type { AssistantMessage } from '@/chat/chatState'
+import { citations, linkCitations } from '@/chat/citations'
+import type { AnswerEvent } from '@/chat/events'
 import { Button } from '@/components/ui/button'
 import {
   Message,
@@ -18,18 +20,9 @@ import {
   MessageContent,
 } from '@/components/ui/message'
 import { AnswerChart } from './AnswerChart'
-import { AnswerSources } from './AnswerSources'
+import { AnswerSources, CitationMarker } from './AnswerSources'
 import { RelatedTables } from './RelatedTables'
 import { Steps } from './Steps'
-
-// Answer links point to StatCan pages; open them without losing the conversation.
-const MARKDOWN_COMPONENTS: Partial<Components> = {
-  a: ({ children, ...props }) => (
-    <a {...props} target="_blank" rel="noopener noreferrer">
-      {children}
-    </a>
-  ),
-}
 
 interface Props {
   message: AssistantMessage
@@ -46,16 +39,7 @@ export function AssistantReply({ message, active, onSend, onRetry }: Props) {
 
       {outcome?.kind === 'answer' && (
         <>
-          <MessageContent
-            markdown
-            components={MARKDOWN_COMPONENTS}
-            className="max-w-none bg-transparent p-0"
-          >
-            {outcome.answer.text}
-          </MessageContent>
-          <AnswerChart results={outcome.answer.data_results} />
-          <AnswerSources answer={outcome.answer} />
-          <AnswerActions text={outcome.answer.text} />
+          <AnswerBody answer={outcome.answer} />
           <RelatedTables tables={outcome.answer.related_tables ?? []} />
         </>
       )}
@@ -161,5 +145,41 @@ function AnswerActions({ text }: { text: string }) {
         </span>
       </MessageAction>
     </MessageActions>
+  )
+}
+
+/** The answer text with its citation markers as numbered links (#63), then the chart, the
+ * sources and the actions. */
+function AnswerBody({ answer }: { answer: AnswerEvent }) {
+  const cited = useMemo(() => citations(answer), [answer])
+  const components = useMemo<Partial<Components>>(
+    () => ({
+      a: ({ href, children, node: _node, ...props }) => {
+        const number = href?.startsWith('#cite-') ? Number(href.slice(6)) : null
+        const source = cited.sources.find((s) => s.number === number)
+        if (source) return <CitationMarker source={source} />
+        // Any other link opens without losing the conversation.
+        return (
+          <a {...props} href={href} target="_blank" rel="noopener noreferrer">
+            {children}
+          </a>
+        )
+      },
+    }),
+    [cited],
+  )
+  return (
+    <>
+      <MessageContent
+        markdown
+        components={components}
+        className="max-w-none bg-transparent p-0"
+      >
+        {linkCitations(answer.text, cited.sourceOfValue)}
+      </MessageContent>
+      <AnswerChart results={answer.data_results} />
+      <AnswerSources citations={cited} />
+      <AnswerActions text={answer.text.replace(/\s*(\[\d+\])+/g, '')} />
+    </>
   )
 }

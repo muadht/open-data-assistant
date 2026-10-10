@@ -98,7 +98,7 @@ A stream that closes without a terminal event was cut off; the frontend shows a 
 }
 ```
 
-- `text` is markdown (links per trust rule 1).
+- `text` is markdown with **citation markers**: each number is followed by `[n]`, where `n` is that number's 1-based position in `values` (e.g. `7.0% [1]`). The backend validator guarantees every marker points at a value and every value is cited, and the text has no URLs. The frontend shows the markers as numbered links to each source (#63).
 - `data_results` holds only the series the answer used (matched by `coordinate` from
   `values`), in the order first used. These are what the chart draws and the export
   contains, so they're never re-fetched.

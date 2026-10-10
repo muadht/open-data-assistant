@@ -26,6 +26,7 @@ from .deps import AgentDeps
 from .outcomes import Answer, Outcome
 
 _URL = re.compile(r"https?://", re.IGNORECASE)
+_MARKER = re.compile(r"\[(\d+)\]")
 
 
 def validate_outcome(ctx: RunContext[AgentDeps], outcome: Outcome) -> Outcome:
@@ -47,6 +48,7 @@ def _validate_answer(answer: Answer, fetched: dict[str, DataResult]) -> None:
             "Remove the URLs from the answer text: the app shows each series' source link "
             "beneath the answer."
         )
+    problems.extend(_citation_problems(answer))
     for used in answer.values:
         result = fetched.get(used.coordinate)
         point = _point(result, used.ref_per) if result else None
@@ -110,3 +112,23 @@ def _as_results(content: Any) -> list[DataResult]:
     if not isinstance(content, list):
         return []
     return [r if isinstance(r, DataResult) else DataResult.model_validate(r) for r in content]
+
+
+def _citation_problems(answer: Answer) -> list[str]:
+    """Each number in the text is followed by a marker [n] pointing at its entry in
+    `values` (1-based); the app turns markers into links to the sources (#63)."""
+    cited = {int(n) for n in _MARKER.findall(answer.text)}
+    count = len(answer.values)
+    problems = [
+        f"Citation marker [{n}] doesn't match any value - there are {count} in `values`."
+        for n in sorted(cited)
+        if not 1 <= n <= count
+    ]
+    uncited = [str(i) for i in range(1, count + 1) if i not in cited]
+    if uncited:
+        problems.append(
+            "Cite every value with its marker right after the number in the text - "
+            f"missing: {', '.join(f'[{n}]' for n in uncited)}."
+        )
+    return problems
+

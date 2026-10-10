@@ -119,7 +119,7 @@ def test_answer_with_no_values_is_sent_back() -> None:
 
 
 def test_untraceable_value_is_sent_back_then_corrected(httpx_mock: HTTPXMock) -> None:
-    wrong = _answer(ONTARIO_ANSWER_ARGS["text"].replace("6.9%", "7.0%"), value=7.0)
+    wrong = _answer(ONTARIO_ANSWER_ARGS["text"].replace("6.9% [1]", "7.0% [1]"), value=7.0)
     result = _run(httpx_mock, [FETCH_ONTARIO, wrong, ONTARIO_ANSWER])
 
     assert isinstance(result.output, Answer)
@@ -131,7 +131,7 @@ def test_untraceable_value_is_sent_back_then_corrected(httpx_mock: HTTPXMock) ->
 def test_a_plain_answer_without_links_passes(httpx_mock: HTTPXMock) -> None:
     """Sources are shown by the app from the answer's data, so the text needn't link them
     (APP_INSTRUCTIONS); the value is still checked against fetched data."""
-    plain = _answer("The unemployment rate in Ontario was 6.9% in August 2026.")
+    plain = _answer("The unemployment rate in Ontario was 6.9% [1] in August 2026.")
     result = _run(httpx_mock, [FETCH_ONTARIO, plain])
 
     assert isinstance(result.output, Answer)
@@ -142,7 +142,7 @@ def test_urls_in_the_text_are_sent_back(httpx_mock: HTTPXMock) -> None:
     """The app shows each source beneath the answer, so links in the text are clutter -
     rejected in code, whatever the prompt does (#11)."""
     linked = _answer(
-        "The unemployment rate in Ontario was 6.9% in August 2026 "
+        "The unemployment rate in Ontario was 6.9% [1] in August 2026 "
         "([v2063949](https://www150.statcan.gc.ca/t1/tbl1/en/sbv.action?vectorNumbers=v2063949))."
     )
     result = _run(httpx_mock, [FETCH_ONTARIO, linked, ONTARIO_ANSWER])
@@ -152,8 +152,20 @@ def test_urls_in_the_text_are_sent_back(httpx_mock: HTTPXMock) -> None:
     assert "Remove the URLs" in reason
 
 
+def test_citation_markers_must_match_the_values(httpx_mock: HTTPXMock) -> None:
+    """Each number is followed by [n], its position in `values` (#63): an unknown marker
+    and an uncited value are both sent back."""
+    miscited = _answer("The unemployment rate in Ontario was 6.9% [2] in August 2026.")
+    result = _run(httpx_mock, [FETCH_ONTARIO, miscited, ONTARIO_ANSWER])
+
+    assert isinstance(result.output, Answer)
+    [reason] = _retry_reasons(result.all_messages())
+    assert "Citation marker [2] doesn't match any value - there are 1" in reason
+    assert "missing: [1]" in reason
+
+
 def test_missing_reference_period_is_sent_back(httpx_mock: HTTPXMock) -> None:
-    undated = _answer("The unemployment rate in Ontario is 6.9%.")
+    undated = _answer("The unemployment rate in Ontario is 6.9% [1].")
     result = _run(httpx_mock, [FETCH_ONTARIO, undated, ONTARIO_ANSWER])
 
     [reason] = _retry_reasons(result.all_messages())
@@ -178,14 +190,14 @@ def test_suppressed_value_must_be_named(httpx_mock: HTTPXMock) -> None:
         (
             "final_result_Answer",
             {
-                "text": "No value is available for June 2026.",
+                "text": "No value [1] is available for June 2026.",
                 "values": [value],
             },
         ),
         (
             "final_result_Answer",
             {
-                "text": "The June 2026 value is suppressed: StatCan flags it as too "
+                "text": "The June 2026 value [1] is suppressed: StatCan flags it as too "
                 "unreliable to be published.",
                 "values": [value],
             },
@@ -203,7 +215,7 @@ def test_suppressed_value_must_be_named(httpx_mock: HTTPXMock) -> None:
 
 
 def test_retry_budget_exhausted_fails_visibly(httpx_mock: HTTPXMock) -> None:
-    undated = _answer("The unemployment rate in Ontario is 6.9%.")
+    undated = _answer("The unemployment rate in Ontario is 6.9% [1].")
     with pytest.raises(UnexpectedModelBehavior, match="Exceeded maximum output retries"):
         _run(httpx_mock, [FETCH_ONTARIO, undated, undated, undated])
 

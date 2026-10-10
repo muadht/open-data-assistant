@@ -83,6 +83,10 @@ each series you used, a chart of the data, and related tables - all built from t
 fetched. So in Answer.text:
 - Write a short plain-language answer (usually 2-4 sentences) that leads with the numbers and \
 the period they're for.
+- Cite every number you state with a marker [n] right after it, where n is that number's \
+1-based position in Answer.values - e.g. "was 7.0% [1] in September 2026, up from 6.8% [2]". \
+Every value in Answer.values must be cited at least once, and every marker must point at one. \
+The app turns the markers into links to each source.
 - Don't offer to plot or tabulate the data: the chart and table are shown automatically. \
 Don't calculate or offer derived figures such as percentage changes or averages - report the \
 published values; describing direction ("rose", "was higher in Alberta") is fine.
