@@ -6,6 +6,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Brand, Logo } from '@/components/brand/Brand'
 import { cn } from '@/lib/utils'
 
 export interface RecentChat {
@@ -69,12 +70,13 @@ export function Sidebar({
         aria-label="Sidebar"
         className="flex h-full w-14 flex-col items-center gap-1 bg-sidebar py-3 text-sidebar-foreground"
       >
+        <Logo className="mb-2" />
         <button
           type="button"
           onClick={onToggle}
           aria-label="Open sidebar"
           title="Open sidebar"
-          className="mb-3 rounded-md p-2 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="mb-2 rounded-md p-2 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <PanelLeftOpen className="size-4" />
         </button>
@@ -89,8 +91,8 @@ export function Sidebar({
       aria-label="Sidebar"
       className="flex h-full w-64 flex-col bg-sidebar text-sm text-sidebar-foreground"
     >
-      <div className="flex items-center justify-between py-3 pr-2 pl-4">
-        <span className="font-semibold">StatCan Data Assistant</span>
+      <div className="flex items-center justify-between gap-2 py-3 pr-2 pl-3">
+        <Brand />
         <button
           type="button"
           onClick={onToggle}

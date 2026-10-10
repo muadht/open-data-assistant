@@ -18,6 +18,7 @@ import { ROOM_FOR_BOTH, WIDE } from '@/lib/breakpoints'
 import { useMediaQuery } from '@/lib/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { useChat } from '@/chat/useChat'
+import { PRODUCT_NAME } from '@/components/brand/Brand'
 import { AssistantReply } from '@/components/chat/AssistantReply'
 import {
   SettingsDialog,
@@ -329,29 +330,47 @@ export default function App({ transport }: { transport?: ChatTransport }) {
               </button>
             )}
             {/* The sidebar shows the name when it's expanded. */}
-            <h1 className={cn('font-semibold', sidebarExpanded && 'sr-only')}>
-              StatCan Data Assistant
+            <h1 className={cn('font-bold', sidebarExpanded && 'sr-only')}>
+              {PRODUCT_NAME}
             </h1>
-            {!wide && (
+            <div className="ml-auto flex items-center gap-1">
+              {/* Where Canada.ca puts its language toggle. A placeholder until the app is
+                  translated: GC public tools must be in both official languages. */}
               <button
                 type="button"
-                onClick={newChat}
-                disabled={isStreaming || (messages.length === 0 && !pinned)}
-                aria-label="New chat"
-                className="ml-auto rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                lang="fr"
+                aria-disabled
+                title="Version française à venir · French version coming soon"
+                className="cursor-not-allowed rounded-md px-2 py-1 text-sm text-muted-foreground underline-offset-4 hover:underline"
               >
-                <SquarePen className="size-4" />
+                Français
               </button>
-            )}
+              {!wide && (
+                <button
+                  type="button"
+                  onClick={newChat}
+                  disabled={isStreaming || (messages.length === 0 && !pinned)}
+                  aria-label="New chat"
+                  className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                >
+                  <SquarePen className="size-4" />
+                </button>
+              )}
+            </div>
           </header>
 
           <div className="flex min-h-0 flex-1">
             {messages.length === 0 ? (
               <main className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6 px-4 pb-24">
                 <div className="space-y-1 text-center">
-                  <h2 className="text-2xl font-semibold">
+                  <h2 className="text-2xl font-bold">
                     What would you like to know?
                   </h2>
+                  {/* Canada.ca's red bar under a page's main heading. */}
+                  <div
+                    aria-hidden
+                    className="mx-auto mt-2 mb-3 h-1.5 w-16 bg-gc-accent"
+                  />
                   <p className="text-muted-foreground">
                     Ask about Statistics Canada data in plain language. Every
                     answer cites its source.
