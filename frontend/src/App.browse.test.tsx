@@ -281,7 +281,11 @@ describe('Browse tables', () => {
     )
 
     // Pinned above the input and sent with the message; the panel stays open.
-    expect(screen.getByText(/Asking about: Consumer Price Index/)).toBeTruthy()
+    expect(
+      screen.getByRole('button', {
+        name: /^Asking about: Consumer Price Index/,
+      }),
+    ).toBeTruthy()
     expect(screen.getByRole('complementary')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Your question'), {
       target: { value: 'What was it in August?' },
@@ -294,7 +298,7 @@ describe('Browse tables', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Stop asking about this table' }),
     )
-    expect(screen.queryByText(/Asking about:/)).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Asking about:/ })).toBeNull()
   })
 })
 
@@ -360,7 +364,11 @@ describe('Table structure in the chat', () => {
         name: /Ask about this table/,
       }),
     )
-    expect(screen.getByText(/Asking about: Consumer Price Index/)).toBeTruthy()
+    expect(
+      screen.getByRole('button', {
+        name: /^Asking about: Consumer Price Index/,
+      }),
+    ).toBeTruthy()
     // The panel stays open for reference while asking.
     expect(screen.getByRole('complementary')).toBeTruthy()
 

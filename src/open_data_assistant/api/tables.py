@@ -117,11 +117,12 @@ def table_details(request: Request, product_id: int) -> TableDetails:
     except WdsMaintenanceWindow as exc:
         raise HTTPException(
             503,
-            "Statistics Canada's data service is updating (midnight to 8:30 AM ET). "
-            "Try again shortly.",
+            "Statistics Canada updates its data overnight, until 8:30 AM ET. Try again after that.",
         ) from exc
     except (WdsError, ValueError) as exc:
-        raise HTTPException(502, "Couldn't load this table's structure from StatCan.") from exc
+        raise HTTPException(
+            502, "I couldn't load this table's details from Statistics Canada just now."
+        ) from exc
     return TableDetails(
         table=to_candidate(hit),
         subjects=[s["en"] for s in hit.source.get("subjects") or []],

@@ -11,5 +11,5 @@ event: tool_call
 data: {"call_id": "c2", "label": "Reading the table's structure"}
 
 event: error
-data: {"message_id": "m1", "code": "wds_unavailable", "message": "Statistics Canada's data service is updating (midnight to 8:30 AM ET). Try again shortly.", "retryable": true}
+data: {"message_id": "m1", "code": "wds_unavailable", "message": "Statistics Canada updates its data overnight, until 8:30 AM ET. Try again after that.", "retryable": true}
 

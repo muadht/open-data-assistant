@@ -74,7 +74,7 @@ function TableStructure({ loaded }: { loaded: LoadedDetails | null }) {
         </p>
       )}
       {loaded?.error && (
-        <p role="alert" className="text-destructive">
+        <p role="status" className="text-muted-foreground">
           {loaded.error}
         </p>
       )}

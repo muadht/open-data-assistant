@@ -93,7 +93,7 @@ describe('runChat with the mock streams', () => {
       kind: 'error',
       error: {
         message:
-          "Statistics Canada's data service is updating (midnight to 8:30 AM ET). Try again shortly.",
+          'Statistics Canada updates its data overnight, until 8:30 AM ET. Try again after that.',
         retryable: true,
       },
     })
@@ -163,7 +163,7 @@ describe('runChat failures', () => {
     )
     expect(reply(state).outcome).toEqual({
       kind: 'error',
-      error: { message: STOPPED_MESSAGE, retryable: true },
+      error: { message: STOPPED_MESSAGE, retryable: true, stopped: true },
     })
   })
 })

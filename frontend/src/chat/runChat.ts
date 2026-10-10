@@ -4,7 +4,7 @@ import { toChatEvent } from './events'
 import { parseSse } from './sse'
 import type { ChatRequest, ChatTransport } from './transport'
 
-export const STOPPED_MESSAGE = 'Stopped.'
+export const STOPPED_MESSAGE = 'Stopped'
 
 /** Sends one message and dispatches an action per stream event. Kept free of React so it
  * can be tested with a fake transport and a plain array as the dispatch target. */
@@ -16,28 +16,33 @@ export async function runChat(
 ): Promise<void> {
   const fail = (message: string, retryable = true, resetSession = false) =>
     dispatch({ type: 'fail', message, retryable, resetSession })
+  const stopped = () =>
+    dispatch({
+      type: 'fail',
+      message: STOPPED_MESSAGE,
+      retryable: true,
+      stopped: true,
+    })
 
   let response: Response
   try {
     response = await transport(request, signal)
   } catch {
-    fail(
-      signal.aborted
-        ? STOPPED_MESSAGE
-        : "Couldn't reach the server. Check your connection and try again.",
-    )
+    if (signal.aborted) stopped()
+    else
+      fail("I couldn't reach the server. Check your connection and try again.")
     return
   }
 
   if (!response.ok) {
     if (response.status === 404 && request.session_id) {
       fail(
-        'This conversation has expired. Please send your question again to start a new one.',
+        'This conversation has expired. Send your question again to start a new one.',
         true,
         true,
       )
     } else if (response.status === 409) {
-      fail('Still answering your previous question. Please wait a moment.')
+      fail("I'm still answering your previous question. Try again in a moment.")
     } else {
       fail(await errorDetail(response))
     }
@@ -60,7 +65,8 @@ export async function runChat(
       if (event) dispatch({ type: 'event', event })
     }
   } catch {
-    fail(signal.aborted ? STOPPED_MESSAGE : CUT_OFF_MESSAGE)
+    if (signal.aborted) stopped()
+    else fail(CUT_OFF_MESSAGE)
     return
   }
   dispatch({ type: 'end' })
@@ -80,5 +86,7 @@ async function errorDetail(response: Response): Promise<string> {
   } catch {
     // Not JSON - fall through to the generic message.
   }
-  return `Something went wrong (HTTP ${response.status}). Please try again.`
+  // The status is for debugging, not for the user.
+  console.warn(`POST /chat failed: HTTP ${response.status}`)
+  return CUT_OFF_MESSAGE
 }
