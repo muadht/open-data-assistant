@@ -26,7 +26,9 @@ from .validator import validate_outcome
 # A typical question takes 4-6 tool calls (search, structure, members, data); 12 leaves room
 # for a comparison or a retry without letting a confused run spin. Tune from #10's data.
 DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=12, tool_calls_limit=12)
-DEFAULT_RUN_TIMEOUT_SECONDS = 30.0
+# A real run with gpt-5-mini took 10-25s for a direct answer (each tool call is a model
+# round trip), so 30s timed out runs that were nearly done. Tune from #10's data.
+DEFAULT_RUN_TIMEOUT_SECONDS = 60.0
 
 # How many times a failed output validation is sent back to the model before the run fails
 # visibly (UnexpectedModelBehavior) rather than returning an unchecked answer.

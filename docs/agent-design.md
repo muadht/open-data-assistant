@@ -97,7 +97,7 @@ MCP server sends that prompt to clients that have no output types.
 | Bad tool arguments (`ValueError` in a tool) | `ModelRetry`: the model sees the error and corrects itself (**Decided**, `agent/tools.py`) |
 | WDS maintenance window (409) / outage (`WdsError`) | Stop; tell the user when to retry. No model retry. (**Decided**, propagates from `agent/tools.py`) |
 | Too many steps | `DEFAULT_USAGE_LIMITS`: 12 requests / 12 tool calls per run (a typical question needs 4-6), passed to `run()` by the caller; tune from #10's data |
-| Too slow | `DEFAULT_RUN_TIMEOUT_SECONDS` (30s), applied by the caller around `run()` - Pydantic AI has no run-level timeout |
+| Too slow | `DEFAULT_RUN_TIMEOUT_SECONDS` (60s; 30s timed out real runs that were nearly done), applied by the caller around `run()` - Pydantic AI has no run-level timeout |
 | Validator keeps failing | After 2 retries the run raises `UnexpectedModelBehavior`; the caller shows an error, never the unchecked answer |
 
 ### Progress events (Proposed)
