@@ -107,6 +107,18 @@ class TableStructure(BaseModel):
     )
 
 
+class TableSearchResult(BaseModel):
+    candidates: list[TableCandidate] = Field(description="Matching tables, best first.")
+    top_structure: TableStructure | None = Field(
+        default=None,
+        description=(
+            "The first candidate's structure, exactly as get_table_structure returns it, so "
+            "you can usually call get_data straight away. Null if it couldn't be fetched, or "
+            "there are no candidates."
+        ),
+    )
+
+
 # ------------------------------------------------------------------------------------ get_data
 
 

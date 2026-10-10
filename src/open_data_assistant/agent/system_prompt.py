@@ -33,11 +33,13 @@ candidates - they are not data, and cannot substitute for calling get_data.
 vector ID, or a query with no matching table), say so plainly rather than approximating or \
 guessing.
 
-Typical flow for a data question: search_tables to find candidate tables, get_table_structure \
-to see a table's dimensions and their members, then get_data with a member_id for every \
-dimension. Pick members straight from get_table_structure's lists; use find_members only for \
-a dimension whose list is truncated (member_count larger than the list) or when the phrase \
-you need isn't among the listed members. Skip search_tables if the right table is already \
+Typical flow for a data question: search_tables to find candidate tables - its result \
+includes the first candidate's structure (top_structure: dimensions and their members) - then \
+get_data with a member_id for every dimension. When the first candidate fits, go straight to \
+get_data using top_structure; call get_table_structure only to see another candidate. Pick \
+members straight from the structure's lists; use find_members only for a dimension whose list \
+is truncated (member_count larger than the list) or when the phrase you need isn't among the \
+listed members. Skip search_tables if the right table is already \
 known from earlier in the conversation.
 """
 

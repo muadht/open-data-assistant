@@ -144,11 +144,15 @@ def build_app() -> FastAPI:
             wds_client.get_code_sets()
         except (WdsError, httpx.HTTPError) as exc:
             logger.warning("Couldn't prefetch WDS code sets: %s", exc)
+        embedder = SentenceTransformerEmbedder(EmbeddingConfig.from_env())
+        # The embedding model loads on first use (8.4 s measured, 2026-10-10): at startup,
+        # not during the first question's search.
+        embedder.embed(["warm up"])
         return AgentDeps(
             wds_client=wds_client,
             search_client=make_client(opensearch),
             search_index=opensearch.index_name,
-            embedder=SentenceTransformerEmbedder(EmbeddingConfig.from_env()),
+            embedder=embedder,
         )
 
     return create_app(build_agent(model, thinking=thinking), make_deps)

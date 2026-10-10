@@ -176,6 +176,15 @@ def test_a_search_failure_never_breaks_the_answer(httpx_mock: HTTPXMock) -> None
 
 
 def test_related_tables_come_from_the_runs_search(httpx_mock: HTTPXMock) -> None:
+    # search_tables also fetches the top candidate's structure (#90). Here WDS can't describe
+    # it, and the search still succeeds, just without the structure. Registered before the
+    # Ontario mocks, whose metadata response would otherwise match this request first.
+    httpx_mock.add_response(
+        method="POST",
+        url=f"{BASE_URL}/getCubeMetadata",
+        match_json=[{"productId": 14100374}],
+        json=[{"status": "FAILED", "object": "Product not found"}],
+    )
     _mock_ontario(httpx_mock)
     hit = {
         "_id": "14100374",

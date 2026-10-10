@@ -12,7 +12,7 @@ from typing import Any
 
 from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
 
-from ..mcp.schemas import TableCandidate
+from ..mcp.schemas import TableCandidate, TableSearchResult
 from ..mcp.tools.search_tables import similar_tables
 from .deps import AgentDeps
 
@@ -59,8 +59,13 @@ def _searched_candidates(messages: list[ModelMessage]) -> list[TableCandidate]:
 
 
 def _as_candidates(content: Any) -> list[TableCandidate]:
-    # In-process the content is the list[TableCandidate] the tool returned; a serialized and
-    # reloaded message history carries plain dicts.
+    # In-process the content is the TableSearchResult the tool returned; a serialized and
+    # reloaded message history carries plain dicts. Before #90 the tool returned a bare list,
+    # which an older session's history may still hold.
+    if isinstance(content, TableSearchResult):
+        return content.candidates
+    if isinstance(content, dict):
+        content = content.get("candidates")
     if not isinstance(content, list):
         return []
     return [

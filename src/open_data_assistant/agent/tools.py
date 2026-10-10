@@ -23,12 +23,12 @@ from collections.abc import Callable
 
 from pydantic_ai import ModelRetry, RunContext
 
-from ..mcp.schemas import DataResult, MemberCandidate, Period, TableCandidate, TableSearchFilters
+from ..mcp.schemas import DataResult, MemberCandidate, Period, TableSearchFilters, TableSearchResult
 from ..mcp.schemas import TableStructure as TableStructureModel
 from ..mcp.tools.find_members import find_members as _find_members
 from ..mcp.tools.get_data import get_data as _get_data
 from ..mcp.tools.get_table_structure import get_table_structure as _get_table_structure
-from ..mcp.tools.search_tables import search_tables as _search_tables
+from ..mcp.tools.search_tables import search_tables_with_structure
 from .deps import AgentDeps
 
 
@@ -44,14 +44,22 @@ def search_tables(
     query: str,
     filters: TableSearchFilters | None = None,
     k: int = 10,
-) -> list[TableCandidate]:
+) -> TableSearchResult:
     """Search the StatCan table catalogue for tables that might answer a question.
 
-    Returns ranked candidates, not data - call get_table_structure on a candidate's
-    product_id to see its dimensions before trying to fetch data from it.
+    Returns ranked candidates, not data, plus `top_structure`: the first candidate's
+    dimensions and members, as get_table_structure would return them. If the first candidate
+    fits the question, pick members from `top_structure` and call get_data directly - no
+    get_table_structure call needed. Call get_table_structure only for another candidate.
     """
-    return _search_tables(
-        ctx.deps.search_client, ctx.deps.search_index, ctx.deps.embedder, query, filters, k=k
+    return search_tables_with_structure(
+        ctx.deps.search_client,
+        ctx.deps.search_index,
+        ctx.deps.embedder,
+        ctx.deps.wds_client,
+        query,
+        filters,
+        k=k,
     )
 
 
