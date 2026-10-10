@@ -15,6 +15,7 @@ const REQUIRED: Record<string, string[]> = {
   session: ['session_id', 'message_id'],
   tool_call: ['call_id', 'label'],
   tool_result: ['call_id', 'ok'],
+  answer_delta: ['message_id', 'text'],
   answer: ['message_id', 'text', 'values', 'data_results'],
   clarification: ['message_id', 'question', 'options'],
   unanswerable: ['message_id', 'reason', 'alternative'],

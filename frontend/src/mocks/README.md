@@ -6,8 +6,8 @@ the backend running. The stream client (#14) replays one of these when mocking i
 
 | File                       | Ends with       | Exercises                                                                                                                                                                                              |
 | -------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `answer-single.sse`        | `answer`        | One series, 12 months: a normal answer and a simple line chart                                                                                                                                         |
-| `answer-comparison.sse`    | `answer`        | Two series (Alberta, Ontario CPI, 13 months); includes a failed tool call the agent recovers from (`ok: false`), which must not show as an error                                                       |
+| `answer-single.sse`        | `answer`        | One series, 12 months: a normal answer and a simple line chart; its text streams in as `answer_delta` drafts first (#91)                                                                               |
+| `answer-comparison.sse`    | `answer`        | Two series (Alberta, Ontario CPI, 13 months); includes a failed tool call the agent recovers from (`ok: false`), which must not show as an error; streams `answer_delta` drafts                        |
 | `answer-provinces.sse`     | `answer`        | **Recorded from a real run** (gpt-5.5, 2026-10-10): unemployment rate by province, September 2026, Canada and the 10 provinces - a province/territory map with the territories as "No data" (#82, #89) |
 | `answer-sex-provinces.sse` | `answer`        | **Recorded from a real run**: men vs women across the provinces - 22 series fetched in one call (#88)                                                                                                  |
 | `answer-gdp.sse`           | `answer`        | **Recorded from a real run**: Canada's real GDP over the last 8 quarters, one series                                                                                                                   |
@@ -38,4 +38,4 @@ recordings of real streams so they can't drift from what the server sends.
 
 ### Recorded runs
 
-The files marked **recorded** are the exact SSE streams the real `/chat` endpoint produced for those questions (gpt-5.5, default reasoning, live WDS, 2026-10-10), saved while measuring #89. One edit: the men-vs-women stream's progress label said "Fetching data for 11 series" (a label bug, fixed in #89, that counted only the first listed dimension) and now says 22, what the fixed code reports.
+The files marked **recorded** are the exact SSE streams the real `/chat` endpoint produced for those questions (gpt-5.5, default reasoning, live WDS, 2026-10-10), saved while measuring #89, before `answer_delta` existed, so they have no drafts. One edit: the men-vs-women stream's progress label said "Fetching data for 11 series" (a label bug, fixed in #89, that counted only the first listed dimension) and now says 22, what the fixed code reports.

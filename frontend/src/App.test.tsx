@@ -12,6 +12,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import App from './App'
 import { EXAMPLE_QUESTIONS } from './chat/examples'
 import { createMockTransport } from './chat/transport'
+import answerSingle from './mocks/answer-single.sse?raw'
 
 beforeAll(() => {
   // The table panel (#70) checks the screen width.
@@ -204,5 +205,39 @@ describe('App with mock streams', () => {
     fireEvent.click(screen.getByRole('button', { name: /New chat/ }))
     expect(screen.getByText('What would you like to know?')).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Sources' })).toBeNull()
+  })
+})
+
+describe('the answer while it is written (#91)', () => {
+  it('shows a draft, marked as unchecked, then the validated answer', async () => {
+    const encoder = new TextEncoder()
+    let push: (text: string) => void = () => {}
+    let close: () => void = () => {}
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        push = (text) => controller.enqueue(encoder.encode(text))
+        close = () => controller.close()
+      },
+    })
+    render(<App transport={async () => new Response(body)} />)
+    ask("What's the unemployment rate in Ontario?")
+
+    const [session, ...rest] = answerSingle.split(/(?<=\n\n)/)
+    push(
+      session +
+        'event: answer_delta\ndata: {"message_id": "m1", "text": "Ontario\'s rate was **7.0%** [1] in"}\n\n',
+    )
+
+    // A draft: no citation markers, no sources yet, and it says it's being checked.
+    const draft = await screen.findByText(/Ontario's rate was/)
+    expect(draft.textContent).not.toContain('[1]')
+    expect(screen.getByText('Checking the numbers…')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Sources' })).toBeNull()
+
+    // The validated answer replaces it.
+    push(rest.join(''))
+    close()
+    expect(await screen.findByRole('region', { name: 'Sources' })).toBeTruthy()
+    expect(screen.queryByText('Checking the numbers…')).toBeNull()
   })
 })

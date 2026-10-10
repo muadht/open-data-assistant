@@ -2,7 +2,8 @@
 docs/chat-api.md (the contract with the frontend's stream client, #14).
 
 Every stream is `session`, then a `tool_call`/`tool_result` pair per tool the agent runs,
-then exactly one terminal event: `answer`, `clarification`, `unanswerable` or `error`.
+`answer_delta`s while the answer's text is being written (#91), then exactly one terminal
+event: `answer`, `clarification`, `unanswerable` or `error`.
 """
 
 from __future__ import annotations
@@ -18,11 +19,17 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Agent, AgentRunResultEvent
 from pydantic_ai.exceptions import UnexpectedModelBehavior, UsageLimitExceeded
 from pydantic_ai.messages import (
+    AgentStreamEvent,
     FunctionToolCallEvent,
     FunctionToolResultEvent,
+    PartDeltaEvent,
+    PartStartEvent,
     RetryPromptPart,
+    ToolCallPart,
+    ToolCallPartDelta,
 )
 from pydantic_ai.usage import UsageLimits
+from pydantic_core import from_json
 
 from ..agent.deps import AgentDeps
 from ..agent.outcomes import Answer, Clarification, Outcome, Unanswerable
@@ -58,6 +65,67 @@ def sse(event: str, data: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+# The tool Pydantic AI gives the model for returning an `Answer` (one output tool per
+# output type). Its arguments - the answer itself - stream in like any tool call's.
+ANSWER_OUTPUT_TOOL = "final_result_Answer"
+
+
+class AnswerTextStream:
+    """Follows the model's response parts and yields the answer's text so far while the
+    model is still writing it (#91), from the partial JSON of the Answer tool call.
+
+    Yields the whole text so far, not just what's new, so the client only ever replaces
+    what it shows. A new Answer call - e.g. the model's retry after the validator sent an
+    answer back - starts again from "", which tells the client to drop the rejected text."""
+
+    def __init__(self) -> None:
+        self._parts: dict[int, tuple[str, str]] = {}  # part index -> (tool name, args so far)
+        self._shown: str | None = None
+
+    def feed(self, event: AgentStreamEvent) -> str | None:
+        """The answer text so far, when this event changed it; otherwise None."""
+        if isinstance(event, PartStartEvent):
+            if not isinstance(event.part, ToolCallPart):
+                return None
+            args = event.part.args
+            self._parts[event.index] = (
+                event.part.tool_name,
+                args if isinstance(args, str) else json.dumps(args or {}),
+            )
+            if event.part.tool_name == ANSWER_OUTPUT_TOOL:
+                self._shown = None  # a fresh answer
+        elif isinstance(event, PartDeltaEvent) and isinstance(event.delta, ToolCallPartDelta):
+            if event.index not in self._parts:
+                return None
+            name, args = self._parts[event.index]
+            delta = event.delta.args_delta
+            self._parts[event.index] = (
+                name + (event.delta.tool_name_delta or ""),
+                args + (delta if isinstance(delta, str) else json.dumps(delta or {})),
+            )
+        else:
+            return None
+        name, args = self._parts[event.index]
+        if name != ANSWER_OUTPUT_TOOL:
+            return None
+        text = _partial_text(args)
+        if text is None or text == self._shown:
+            return None
+        self._shown = text
+        return text
+
+
+def _partial_text(args: str) -> str | None:
+    if not args.strip():
+        return ""
+    try:
+        parsed = from_json(args, allow_partial="trailing-strings")
+    except ValueError:
+        return None
+    text = parsed.get("text", "") if isinstance(parsed, dict) else None
+    return text if isinstance(text, str) else None
+
+
 async def chat_events(
     agent: Agent[AgentDeps, Outcome],
     deps: AgentDeps,
@@ -76,6 +144,7 @@ async def chat_events(
 
         output: Outcome | None = None
         shown_calls: set[str] = set()
+        answer_text = AnswerTextStream()
         try:
             async with asyncio.timeout(timeout_seconds):
                 async with agent.run_stream_events(
@@ -86,7 +155,11 @@ async def chat_events(
                     instructions=pinned_table_instructions(table_id) if table_id else None,
                 ) as events:
                     async for event in events:
-                        if isinstance(event, FunctionToolCallEvent):
+                        if isinstance(event, (PartStartEvent, PartDeltaEvent)):
+                            text = answer_text.feed(event)
+                            if text is not None:
+                                yield sse("answer_delta", {"message_id": message_id, "text": text})
+                        elif isinstance(event, FunctionToolCallEvent):
                             shown_calls.add(event.tool_call_id)
                             label = tool_label(event.part.tool_name, event.part.args_as_dict())
                             yield sse("tool_call", {"call_id": event.tool_call_id, "label": label})

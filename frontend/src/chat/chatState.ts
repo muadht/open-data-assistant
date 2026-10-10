@@ -30,6 +30,9 @@ export interface AssistantMessage {
   id: string
   messageId?: string
   steps: Step[]
+  /** The answer's text while it's being written (#91): unvalidated, shown as a draft until
+   * the outcome arrives, which clears it. */
+  draft?: string
   /** Set once the stream's terminal event (or a failure) arrives. */
   outcome?: Outcome
 }
@@ -89,6 +92,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...updateCurrent(state, (m) => ({
           ...m,
+          draft: undefined,
           outcome: m.outcome ?? {
             kind: 'error',
             error: { message: action.message, retryable: action.retryable },
@@ -105,6 +109,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             ? m
             : {
                 ...m,
+                draft: undefined,
                 outcome: {
                   kind: 'error',
                   error: { message: CUT_OFF_MESSAGE, retryable: true },
@@ -141,6 +146,11 @@ function applyEvent(state: ChatState, event: ChatEvent): ChatState {
           s.callId === event.data.call_id ? { ...s, ok: event.data.ok } : s,
         ),
       }))
+    case 'answer_delta':
+      return updateCurrent(state, (m) => ({
+        ...m,
+        draft: event.data.text || undefined,
+      }))
     case 'answer':
       return finish(state, { kind: 'answer', answer: event.data })
     case 'clarification':
@@ -160,7 +170,7 @@ function applyEvent(state: ChatState, event: ChatEvent): ChatState {
 
 function finish(state: ChatState, outcome: Outcome): ChatState {
   return {
-    ...updateCurrent(state, (m) => ({ ...m, outcome })),
+    ...updateCurrent(state, (m) => ({ ...m, draft: undefined, outcome })),
     isStreaming: false,
   }
 }

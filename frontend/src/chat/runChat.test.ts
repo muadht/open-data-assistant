@@ -179,3 +179,56 @@ describe('pickMock', () => {
     expect(pickMock(message)).toBe(expected)
   })
 })
+
+describe('the answer as a draft while it is written (#91)', () => {
+  function sse(event: string, data: object): string {
+    return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+  }
+  const session = sse('session', { session_id: 's', message_id: 'm1' })
+  const delta = (text: string) =>
+    sse('answer_delta', { message_id: 'm1', text })
+
+  it('keeps the latest text as a draft until the stream ends', async () => {
+    // Cut off after the deltas: the draft goes and the cut-off error takes its place.
+    const state = await send(
+      respondWith(session + delta('Ontario') + delta('Ontario was 6.9% [1]')),
+    )
+    const message = reply(state)
+    expect(message.draft).toBeUndefined()
+    expect(message.outcome).toMatchObject({
+      kind: 'error',
+      error: { message: CUT_OFF_MESSAGE },
+    })
+  })
+
+  it('a new draft replaces the old one, and "" clears it (a retry)', () => {
+    let state = chatReducer(initialChatState, {
+      type: 'send',
+      userId: 'u',
+      assistantId: 'a',
+      text: 'q',
+    })
+    const apply = (text: string) =>
+      (state = chatReducer(state, {
+        type: 'event',
+        event: { type: 'answer_delta', data: { message_id: 'm1', text } },
+      }))
+    apply('Wrong 7.0% [1]')
+    expect(reply(state).draft).toBe('Wrong 7.0% [1]')
+    apply('')
+    expect(reply(state).draft).toBeUndefined()
+    apply('Right')
+    expect(reply(state).draft).toBe('Right')
+  })
+
+  it('the validated answer replaces the draft', async () => {
+    const withDraft = answerSingle.replace(
+      'event: answer\n',
+      delta('Ontario was') + 'event: answer\n',
+    )
+    const state = await send(respondWith(withDraft))
+    const message = reply(state)
+    expect(message.draft).toBeUndefined()
+    expect(message.outcome?.kind).toBe('answer')
+  })
+})

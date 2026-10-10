@@ -3,13 +3,22 @@ WDS mocked at the httpx transport - no LLM, no live WDS, no OpenSearch."""
 
 from __future__ import annotations
 
+import itertools
 import json
 from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from pydantic_ai.messages import ModelMessage, ModelResponse
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelResponse,
+    PartDeltaEvent,
+    PartStartEvent,
+    TextPart,
+    ToolCallPart,
+    ToolCallPartDelta,
+)
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, DeltaToolCalls, FunctionModel
 from pydantic_ai.usage import UsageLimits
 from pytest_httpx import HTTPXMock
@@ -17,7 +26,7 @@ from pytest_httpx import HTTPXMock
 from open_data_assistant.agent.agent import build_agent
 from open_data_assistant.agent.deps import AgentDeps
 from open_data_assistant.api.app import create_app
-from open_data_assistant.api.chat import tool_label
+from open_data_assistant.api.chat import ANSWER_OUTPUT_TOOL, AnswerTextStream, tool_label
 from open_data_assistant.api.sessions import SessionStore
 from open_data_assistant.wds.client import BASE_URL, WdsClient
 from tests.agent.test_agent import ONTARIO_ANSWER_ARGS
@@ -42,6 +51,7 @@ REQUIRED = {
     "session": {"session_id", "message_id"},
     "tool_call": {"call_id", "label"},
     "tool_result": {"call_id", "ok"},
+    "answer_delta": {"message_id", "text"},
     "answer": {"message_id", "text", "values", "data_results"},
     "clarification": {"message_id", "question", "options"},
     "unanswerable": {"message_id", "reason", "alternative"},
@@ -69,6 +79,7 @@ def _client(
     search: FakeOpenSearchClient | None = None,
     sessions: SessionStore | None = None,
     usage_limits: UsageLimits | None = None,
+    model: FunctionModel | None = None,
 ) -> TestClient:
     def make_deps() -> AgentDeps:
         return AgentDeps(
@@ -81,7 +92,7 @@ def _client(
     kwargs: dict[str, Any] = {"sessions": sessions}
     if usage_limits is not None:
         kwargs["usage_limits"] = usage_limits
-    return TestClient(create_app(build_agent(_scripted(steps)), make_deps, **kwargs))
+    return TestClient(create_app(build_agent(model or _scripted(steps)), make_deps, **kwargs))
 
 
 def _mock(httpx_mock: HTTPXMock, method: str, path: str, fixture: str) -> None:
@@ -130,7 +141,9 @@ def test_answer_stream(httpx_mock: HTTPXMock) -> None:
         events = _events(client, "What's the unemployment rate in Ontario?")
 
     names = [name for name, _ in events]
-    assert names == ["session", "tool_call", "tool_result", "answer"]
+    # The scripted model writes the answer in one chunk: one answer_delta with all of it.
+    assert names == ["session", "tool_call", "tool_result", "answer_delta", "answer"]
+    assert events[3][1] == {"message_id": "m1", "text": ONTARIO_ANSWER_ARGS["text"]}
     session = events[0][1]
     assert session["message_id"] == "m1"
     assert events[1][1]["label"] == "Fetching data"
@@ -160,7 +173,7 @@ def test_follow_up_reuses_the_session_and_its_earlier_data(httpx_mock: HTTPXMock
 
     assert second[0][1] == {"session_id": session_id, "message_id": "m2"}
     # No tool calls this turn: the answer cites data fetched in turn 1.
-    assert [name for name, _ in second] == ["session", "answer"]
+    assert [name for name, _ in second] == ["session", "answer_delta", "answer"]
     assert second[-1][1]["data_results"][0]["coordinate"] == "7.7.1.1.1.1.0.0.0.0"
 
 
@@ -350,3 +363,76 @@ def test_idle_sessions_expire() -> None:
 )
 def test_tool_labels(tool: str, args: dict[str, Any], label: str) -> None:
     assert tool_label(tool, args) == label
+
+
+# ------------------------------------------------------------- streaming the answer (#91)
+
+
+def _answer_start(index: int = 0, tool: str = ANSWER_OUTPUT_TOOL) -> PartStartEvent:
+    return PartStartEvent(index=index, part=ToolCallPart(tool_name=tool, args=""))
+
+
+def _args(text: str, index: int = 0) -> PartDeltaEvent:
+    return PartDeltaEvent(index=index, delta=ToolCallPartDelta(args_delta=text))
+
+
+def test_the_answer_text_streams_as_the_model_writes_it() -> None:
+    stream = AnswerTextStream()
+    fed = [
+        stream.feed(e)
+        for e in (
+            _answer_start(),
+            _args('{"te'),
+            _args('xt": "Ontario\'s rate'),
+            _args(" was 6.9% [1]"),
+            _args('", "values": [{"coordinate"'),
+        )
+    ]
+    # Whole text so far each time; nothing when an event doesn't change it.
+    assert fed == ["", None, "Ontario's rate", "Ontario's rate was 6.9% [1]", None]
+
+
+def test_other_tool_calls_and_text_parts_are_not_streamed() -> None:
+    stream = AnswerTextStream()
+    assert stream.feed(_answer_start(tool="get_data")) is None
+    assert stream.feed(_args('{"text": "not an answer"}')) is None
+    assert stream.feed(PartStartEvent(index=1, part=TextPart(content="thinking aloud"))) is None
+
+
+def test_the_tool_name_may_arrive_in_pieces() -> None:
+    stream = AnswerTextStream()
+    stream.feed(PartStartEvent(index=0, part=ToolCallPart(tool_name="final_result_", args="")))
+    delta = ToolCallPartDelta(tool_name_delta="Answer", args_delta='{"text": "Hi')
+    assert stream.feed(PartDeltaEvent(index=0, delta=delta)) == "Hi"
+
+
+def test_a_retried_answer_starts_again_from_empty() -> None:
+    """The validator sent the first answer back; the client must drop its text."""
+    stream = AnswerTextStream()
+    stream.feed(_answer_start())
+    assert stream.feed(_args('{"text": "Wrong 7.0% [1]"')) == "Wrong 7.0% [1]"
+    assert stream.feed(_answer_start()) == ""
+    assert stream.feed(_args('{"text": "Right')) == "Right"
+
+
+def test_a_chunked_answer_streams_deltas_before_the_answer(httpx_mock: HTTPXMock) -> None:
+    _mock_ontario(httpx_mock)
+    answer_json = json.dumps(ONTARIO_ANSWER_ARGS)
+
+    async def stream(messages: list[ModelMessage], _info: AgentInfo) -> AsyncIterator[Any]:
+        if not any(isinstance(m, ModelResponse) for m in messages):
+            yield {0: DeltaToolCall(name=ONTARIO_DATA[0], json_args=json.dumps(ONTARIO_DATA[1]))}
+            return
+        yield {0: DeltaToolCall(name=ANSWER_OUTPUT_TOOL, json_args="")}
+        for start in range(0, len(answer_json), 25):
+            yield {0: DeltaToolCall(json_args=answer_json[start : start + 25])}
+
+    with _client([], model=FunctionModel(stream_function=stream)) as client:
+        events = _events(client, "What's the unemployment rate in Ontario?")
+
+    deltas = [data["text"] for name, data in events if name == "answer_delta"]
+    assert len(deltas) > 3
+    # Each is the text so far, growing to the full text, all before the final answer.
+    assert all(b.startswith(a) for a, b in itertools.pairwise(deltas))
+    assert deltas[-1] == ONTARIO_ANSWER_ARGS["text"]
+    assert events[-1][0] == "answer"

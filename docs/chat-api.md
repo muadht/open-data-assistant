@@ -54,6 +54,9 @@ sequenceDiagram
         API-->>FE: tool_call
         API-->>FE: tool_result
     end
+    opt the model writes an Answer
+        API-->>FE: answer_delta (repeated: the text so far)
+    end
     API-->>FE: exactly one of: answer | clarification | unanswerable | error
     Note over FE,API: stream closes
 ```
@@ -82,6 +85,20 @@ A stream that closes without a terminal event was cut off; the frontend shows a 
 - `ok: false` means the tool call failed and the agent is retrying with different arguments
   (a normal part of a run, not an error to show the user). Optional `"message"` says why.
 - Purely for showing progress: the frontend must not need them to render the answer.
+
+### `answer_delta` (the answer's text while it's being written, #91)
+
+```json
+{ "message_id": "m7", "text": "Ontario's unemployment rate was 6.9% [1] in Aug" }
+```
+
+- `text` is **the whole text so far**, not just what's new: the frontend replaces what it
+  shows each time.
+- `text: ""` means a new answer has started, e.g. the model is retrying after the validator
+  sent its previous answer back. Drop any text shown so far.
+- It's a **draft**, not yet checked by the validator (see "Streamed text is a draft"
+  below). Only the terminal `answer` is the validated answer.
+- Only `Answer`s stream; a clarification or unanswerable arrives whole.
 
 ### Terminal events
 
@@ -144,18 +161,23 @@ The frontend can show `options` as buttons; clicking one sends its text as the n
 
 `message` is safe to show the user as-is.
 
-## No streamed answer text (for now)
+## Streamed text is a draft
 
-Ticket #11 originally listed text deltas. This format deliberately has none: the answer
-arrives whole, in the terminal event, **after** the output validator has checked it.
+The first version of this format had no streamed text: the answer arrived whole, **after**
+the output validator had checked it. The model writes its answer as a structured `Answer`,
+and the validator can reject it and make the model try again, so streaming the text shows
+numbers and citations that might then be rejected - what the trust rules exist to prevent.
 
-The model writes its answer as a structured `Answer`, and the validator can reject it and
-make the model try again. Streaming the text as it's written would show the user numbers
-and citations that might then be rejected, which is exactly what the trust rules exist to
-prevent. Progress events cover the wait, and answers are short.
+Measured runs (#89, #90) changed the trade-off: the final turn, writing the answer, takes
+6-17 s, with nothing to read until it ends. So `answer_delta` (#91) streams the text, and the
+frontend shows it **as a draft**:
 
-Revisit if the evals (#10) show long waits. Adding a `text_delta` event later doesn't break
-this format, as long as the frontend ignores unknown event types (which it must).
+- Visibly unchecked: muted, with a "Checking the numbers..." note. No citation links, chart
+  or sources, which all come with the validated `answer`.
+- Replaced by the validated `answer` when it arrives.
+- Dropped when a retry starts (`text: ""`) or the stream ends in `error`.
+
+The validator still has the last word: nothing in the draft is presented as checked.
 
 ## Compatibility rules
 

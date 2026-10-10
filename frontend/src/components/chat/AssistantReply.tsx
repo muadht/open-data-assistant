@@ -5,6 +5,7 @@ import {
   Copy,
   Download,
   Info,
+  Loader2,
   RotateCcw,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -43,6 +44,8 @@ export function AssistantReply({
   return (
     <Message className="flex-col items-stretch gap-5">
       <Steps steps={message.steps} active={active} />
+
+      {!outcome && message.draft && <DraftAnswer text={message.draft} />}
 
       {outcome?.kind === 'answer' && (
         <>
@@ -155,6 +158,26 @@ function AnswerActions({ text }: { text: string }) {
         </span>
       </MessageAction>
     </MessageActions>
+  )
+}
+
+/** The answer while the model is still writing it (#91). Not yet checked by the validator,
+ * so it looks unfinished and makes no claims: muted, citation markers hidden (their sources
+ * come with the validated answer), and a note that the numbers are being checked. */
+function DraftAnswer({ text }: { text: string }) {
+  return (
+    <div aria-busy className="space-y-2">
+      <MessageContent
+        markdown
+        className="max-w-none bg-transparent p-0 text-muted-foreground [&_strong]:text-muted-foreground"
+      >
+        {text.replace(/\s*(\[\d+\])+/g, '')}
+      </MessageContent>
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="size-3.5 animate-spin" aria-hidden />
+        Checking the numbers…
+      </p>
+    </div>
   )
 }
 

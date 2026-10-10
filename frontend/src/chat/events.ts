@@ -64,6 +64,13 @@ export interface ToolResultEvent {
   message?: string
 }
 
+/** The answer's text so far while the model writes it (#91): a draft, not yet validated.
+ * Replaces any earlier draft; "" means a new answer started (e.g. a retry). */
+export interface AnswerDeltaEvent {
+  message_id: string
+  text: string
+}
+
 export interface AnswerEvent {
   message_id: string
   text: string
@@ -103,6 +110,7 @@ export type ChatEvent =
   | { type: 'session'; data: SessionEvent }
   | { type: 'tool_call'; data: ToolCallEvent }
   | { type: 'tool_result'; data: ToolResultEvent }
+  | { type: 'answer_delta'; data: AnswerDeltaEvent }
   | { type: 'answer'; data: AnswerEvent }
   | { type: 'clarification'; data: ClarificationEvent }
   | { type: 'unanswerable'; data: UnanswerableEvent }
@@ -119,6 +127,7 @@ const KNOWN_EVENTS = new Set<string>([
   'session',
   'tool_call',
   'tool_result',
+  'answer_delta',
   ...TERMINAL_EVENTS,
 ])
 
