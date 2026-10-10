@@ -1,8 +1,22 @@
-import { AlertTriangle, HelpCircle, Info, RotateCcw } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  Copy,
+  Download,
+  HelpCircle,
+  Info,
+  RotateCcw,
+} from 'lucide-react'
+import { useState } from 'react'
 import type { Components } from 'react-markdown'
 import type { AssistantMessage } from '@/chat/chatState'
 import { Button } from '@/components/ui/button'
-import { Message, MessageContent } from '@/components/ui/message'
+import {
+  Message,
+  MessageAction,
+  MessageActions,
+  MessageContent,
+} from '@/components/ui/message'
 import { AnswerSources } from './AnswerSources'
 import { Steps } from './Steps'
 
@@ -37,7 +51,9 @@ export function AssistantReply({ message, active, onSend, onRetry }: Props) {
           >
             {outcome.answer.text}
           </MessageContent>
+          {/* The chart for outcome.answer.data_results renders here (#16). */}
           <AnswerSources answer={outcome.answer} />
+          <AnswerActions text={outcome.answer.text} />
         </>
       )}
 
@@ -103,5 +119,37 @@ export function AssistantReply({ message, active, onSend, onRetry }: Props) {
         </div>
       )}
     </Message>
+  )
+}
+
+function AnswerActions({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+  return (
+    <MessageActions className="text-muted-foreground">
+      <MessageAction tooltip={copied ? 'Copied' : 'Copy answer'}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={copy}
+          aria-label="Copy answer"
+        >
+          {copied ? <Check /> : <Copy />}
+        </Button>
+      </MessageAction>
+      {/* Enabled by #17: CSV / Excel / JSON of this answer's data. */}
+      <MessageAction tooltip="Export the data (coming soon)">
+        <span>
+          <Button variant="ghost" size="sm" disabled aria-label="Export data">
+            <Download />
+            Export
+          </Button>
+        </span>
+      </MessageAction>
+    </MessageActions>
   )
 }

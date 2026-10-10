@@ -44,16 +44,26 @@ describe('App with mock streams', () => {
       }),
     )
 
+    // A citation chip per series; clicking one shows its period, flags and notes.
     const sources = await screen.findByRole('region', { name: 'Sources' })
-    expect(within(sources).getByText(/Alberta · All-items/)).toBeTruthy()
-    expect(within(sources).getByText(/Ontario · All-items/)).toBeTruthy()
-    expect(within(sources).getAllByText('2026-08-01')).toHaveLength(2)
-    expect(within(sources).getAllByText('None')).toHaveLength(2)
-    expect(within(sources).getAllByText(/StatCan notes/)).toHaveLength(2)
+    const alberta = within(sources).getByRole('button', {
+      name: /Alberta · All-items/,
+    })
+    expect(
+      within(sources).getByRole('button', { name: /Ontario · All-items/ }),
+    ).toBeTruthy()
+    fireEvent.click(alberta)
+    expect(alberta.getAttribute('aria-expanded')).toBe('true')
+    expect(within(sources).getByText('2026-08-01')).toBeTruthy()
+    expect(within(sources).getByText('None')).toBeTruthy()
+    expect(within(sources).getByText(/StatCan notes \(\d+\)/)).toBeTruthy()
 
-    // The recovered failed step is progress, not an error.
+    // Steps collapse to a summary once done; the recovered failed step is progress, not
+    // an error.
+    expect(screen.getByText('Worked through 4 steps')).toBeTruthy()
     expect(screen.getByText(/\(retrying\)/)).toBeTruthy()
     expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Copy answer' })).toBeTruthy()
 
     // Markdown links in the answer open in a new tab.
     const link = screen.getAllByRole('link', { name: /v41692327/ })[0]
@@ -91,5 +101,14 @@ describe('App with mock streams', () => {
     // The question is sent again and gets its own reply.
     await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2))
     expect(screen.getAllByText('show me an error')).toHaveLength(2)
+  })
+
+  it('"New chat" clears the conversation', async () => {
+    renderApp()
+    ask("What's the unemployment rate in Ontario?")
+    await screen.findByRole('region', { name: 'Sources' })
+    fireEvent.click(screen.getByRole('button', { name: /New chat/ }))
+    expect(screen.getByText('What would you like to know?')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Sources' })).toBeNull()
   })
 })
