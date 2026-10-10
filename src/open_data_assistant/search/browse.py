@@ -46,7 +46,10 @@ class FacetValue:
 
 @dataclass(frozen=True)
 class Facets:
+    # The next level of the subject hierarchy to drill into...
     subjects: list[FacetValue] = field(default_factory=list)
+    # ...and every subject at any level, so the subject filter can be searched by name.
+    all_subjects: list[FacetValue] = field(default_factory=list)
     frequencies: list[FacetValue] = field(default_factory=list)
     active: int = 0
     archived: int = 0
@@ -151,6 +154,7 @@ def _facets(client: SearchClient, index: str, query: BrowseQuery) -> Facets:
     }
     return Facets(
         subjects=_subject_level(buckets("subjects"), query.subject),
+        all_subjects=_by_count(buckets("subjects")),
         frequencies=[FacetValue(b["key"], b["doc_count"]) for b in buckets("frequencies")],
         active=archived.get("false", 0),
         archived=archived.get("true", 0),
@@ -168,10 +172,10 @@ def _facets_of(hits: list[SearchHit], selected_subject: str | None) -> Facets:
         if frequency:
             frequencies[frequency] = frequencies.get(frequency, 0) + 1
         archived += bool(hit.source.get("archived"))
+    subject_buckets = [{"key": k, "doc_count": n} for k, n in subjects.items()]
     return Facets(
-        subjects=_subject_level(
-            [{"key": k, "doc_count": n} for k, n in subjects.items()], selected_subject
-        ),
+        subjects=_subject_level(subject_buckets, selected_subject),
+        all_subjects=_by_count(subject_buckets),
         frequencies=sorted(
             (FacetValue(k, n) for k, n in frequencies.items()), key=lambda v: (-v.count, v.value)
         ),
@@ -190,4 +194,9 @@ def _subject_level(buckets: list[dict[str, Any]], selected: str | None) -> list[
         if b["key"].count("/") == depth
         and (selected is None or b["key"].startswith(selected + "/"))
     ]
+    return sorted(values, key=lambda v: (-v.count, v.value))
+
+
+def _by_count(buckets: list[dict[str, Any]]) -> list[FacetValue]:
+    values = [FacetValue(b["key"], b["doc_count"]) for b in buckets]
     return sorted(values, key=lambda v: (-v.count, v.value))

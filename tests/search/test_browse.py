@@ -117,6 +117,13 @@ def test_subject_counts_offer_the_next_level_of_the_hierarchy() -> None:
         f"{PRICES}/Producer price indexes",
         CPI,
     ]
+    # Every subject at any level is also returned, for searching subjects by name.
+    assert [f.value for f in top.facets.all_subjects] == [
+        PRICES,
+        f"{PRICES}/Producer price indexes",
+        CPI,
+        "Labour",
+    ]
     assert top.facets.frequencies[0].value == "Monthly"
     assert (top.facets.active, top.facets.archived) == (40, 7)
 

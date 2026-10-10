@@ -19,6 +19,7 @@ Read-only endpoints behind the "Browse tables" page (#56), served by the same Fa
 Returns `{ total, page, page_size, results: TableCandidate[], facets }`, where `facets` has:
 
 - `subjects`: the next level of the subject hierarchy (top-level subjects, or the children of `subject`), with counts.
+- `all_subjects`: every subject at any level, with counts, so the subject filter can be searched by name.
 - `frequencies`, `active`, `archived`: counts.
 
 Without `q`, each facet is counted with every *other* filter applied but not its own, so the counts show what each choice would give. With `q`, counts are over the ranked results themselves, so they always match what's listed.
