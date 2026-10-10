@@ -19,7 +19,7 @@ from pydantic_ai.usage import UsageLimits
 
 from .deps import AgentDeps
 from .outcomes import Answer, Clarification, Outcome, Unanswerable
-from .system_prompt import APP_INSTRUCTIONS, SYSTEM_PROMPT
+from .system_prompt import AGENT_SYSTEM_PROMPT, APP_INSTRUCTIONS
 from .tools import find_members, get_data, get_table_structure, search_tables
 from .validator import validate_outcome
 
@@ -42,7 +42,7 @@ def build_agent(model: Model | KnownModelName | str | None = None) -> Agent[Agen
         # The list form rather than the `Outcome` alias: mypy can't match a runtime union
         # object to Agent's output_type overloads, but types the list against the annotation.
         output_type=[Answer, Clarification, Unanswerable],
-        instructions=[SYSTEM_PROMPT, APP_INSTRUCTIONS],
+        instructions=[AGENT_SYSTEM_PROMPT, APP_INSTRUCTIONS],
         retries=_OUTPUT_RETRIES,
     )
 

@@ -77,7 +77,7 @@ budget (2); after that the run fails visibly rather than returning an unchecked 
 | Check | Rule |
 |---|---|
 | Every number in the answer appears in a data-bearing tool result from this conversation | 5 |
-| (Not checked in the text: the chat endpoint sends every used `DataResult` with the answer and the app shows each one's source beneath it - see `APP_INSTRUCTIONS` in `agent/system_prompt.py`) | 1 |
+| (Not checked in the text: the chat endpoint sends every used `DataResult` with the answer and the app shows each one's source beneath it - see `AGENT_SYSTEM_PROMPT` in `agent/system_prompt.py`). URLs in the answer text are rejected, so the text stays plain | 1 |
 | Reference period stated | 2 |
 | Non-normal status / symbol on a used data point is mentioned | 3 |
 
@@ -145,7 +145,7 @@ StatCan knowledge lives in four places, each with a clear owner:
 
 | Where | What | Status |
 |---|---|---|
-| System prompt (`agent/system_prompt.py`) | Trust rules, typical flow, general guidance | Decided |
+| System prompt (`agent/system_prompt.py`) | Trust rules, typical flow, general guidance. Two variants: `SYSTEM_PROMPT` for MCP clients (citations and flags in the text) and `AGENT_SYSTEM_PROMPT` + `APP_INSTRUCTIONS` for the web app (sources and flags shown by the UI; plain answers; defaults instead of clarifications) | Decided |
 | Tool-result hints | Meaning attached to data from metadata, e.g. a `2002=100` unit means "index: compare changes, not levels", scalar factor, preliminary periods, and the footnotes that apply to the selected series (#38) | Proposed |
 | Per-table defaults | Default members for sub-dimensions the user didn't mention (e.g. seasonally adjusted, both sexes), to fix the over-asking found in the [spike](llm-provider-spike.md) | Proposed |
 | Concept-to-table map | Curated shortcuts for the most common questions (e.g. "inflation"); search covers the rest | Proposed |

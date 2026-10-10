@@ -18,7 +18,6 @@ from open_data_assistant.wds.client import WdsMaintenanceWindow
 from tests.agent.test_agent import (
     ONTARIO_ANSWER,
     ONTARIO_ANSWER_ARGS,
-    ONTARIO_LINK,
     Step,
     _deps,
     _mock,
@@ -139,8 +138,22 @@ def test_a_plain_answer_without_links_passes(httpx_mock: HTTPXMock) -> None:
     assert _retry_reasons(result.all_messages()) == []
 
 
+def test_urls_in_the_text_are_sent_back(httpx_mock: HTTPXMock) -> None:
+    """The app shows each source beneath the answer, so links in the text are clutter -
+    rejected in code, whatever the prompt does (#11)."""
+    linked = _answer(
+        "The unemployment rate in Ontario was 6.9% in August 2026 "
+        "([v2063949](https://www150.statcan.gc.ca/t1/tbl1/en/sbv.action?vectorNumbers=v2063949))."
+    )
+    result = _run(httpx_mock, [FETCH_ONTARIO, linked, ONTARIO_ANSWER])
+
+    assert isinstance(result.output, Answer)
+    [reason] = _retry_reasons(result.all_messages())
+    assert "Remove the URLs" in reason
+
+
 def test_missing_reference_period_is_sent_back(httpx_mock: HTTPXMock) -> None:
-    undated = _answer(f"The unemployment rate in Ontario is 6.9% ([v2063949]({ONTARIO_LINK})).")
+    undated = _answer("The unemployment rate in Ontario is 6.9%.")
     result = _run(httpx_mock, [FETCH_ONTARIO, undated, ONTARIO_ANSWER])
 
     [reason] = _retry_reasons(result.all_messages())
@@ -152,10 +165,6 @@ def test_suppressed_value_must_be_named(httpx_mock: HTTPXMock) -> None:
     _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
     _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "suppressed_series_info")
     _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "suppressed_value")
-    link = (
-        "https://www150.statcan.gc.ca/t1/tbl1/en/sbv.action"
-        "?vectorNumbers=v999999999&searchOption=2&latestN=1"
-    )
     value = {"coordinate": "1.1.1.1.0.0.0.0.0.0", "ref_per": "2026-06-01", "value": None}
     steps: list[Step] = [
         (
@@ -169,7 +178,7 @@ def test_suppressed_value_must_be_named(httpx_mock: HTTPXMock) -> None:
         (
             "final_result_Answer",
             {
-                "text": f"No value is available for June 2026 ([series]({link})).",
+                "text": "No value is available for June 2026.",
                 "values": [value],
             },
         ),
@@ -177,7 +186,7 @@ def test_suppressed_value_must_be_named(httpx_mock: HTTPXMock) -> None:
             "final_result_Answer",
             {
                 "text": "The June 2026 value is suppressed: StatCan flags it as too "
-                f"unreliable to be published ([series]({link})).",
+                "unreliable to be published.",
                 "values": [value],
             },
         ),

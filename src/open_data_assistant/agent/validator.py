@@ -9,11 +9,13 @@ free text) - the ticket's agreed starting point; see #48 for when to revisit tha
 
 Trust rule 1 (cite the source) isn't checked in the text: every value must trace to a fetched
 DataResult (rule 5, below), and the chat endpoint sends those DataResults with the answer, so
-the app always shows each series' source beneath it (APP_INSTRUCTIONS in system_prompt.py).
+the app always shows each series' source beneath it (AGENT_SYSTEM_PROMPT, rule 1). URLs in the
+text are rejected rather than tolerated, so answers stay clean whatever the prompt does.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pydantic_ai import ModelRetry, RunContext
@@ -22,6 +24,8 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
 from ..mcp.schemas import DataPoint, DataResult
 from .deps import AgentDeps
 from .outcomes import Answer, Outcome
+
+_URL = re.compile(r"https?://", re.IGNORECASE)
 
 
 def validate_outcome(ctx: RunContext[AgentDeps], outcome: Outcome) -> Outcome:
@@ -38,6 +42,11 @@ def _validate_answer(answer: Answer, fetched: dict[str, DataResult]) -> None:
         )
 
     problems: list[str] = []
+    if _URL.search(answer.text):
+        problems.append(
+            "Remove the URLs from the answer text: the app shows each series' source link "
+            "beneath the answer."
+        )
     for used in answer.values:
         result = fetched.get(used.coordinate)
         point = _point(result, used.ref_per) if result else None
