@@ -29,9 +29,10 @@ npm run dev           # dev server at http://localhost:5173
 npm run build         # type-check + production build
 npm run lint          # oxlint
 npm run format:check  # prettier (npm run format to fix)
+npm test              # unit tests (Vitest)
 ```
 
-It's a layout shell for now, not connected to the backend yet. Components under `src/components/ui/` are copied in by the shadcn CLI (`npx shadcn@latest add ...`); prompt-kit's come from its registry, e.g. `npx shadcn@latest add "https://www.prompt-kit.com/c/message.json"`.
+`npm test` runs the unit tests (Vitest). To try the chat without the backend, start it with `VITE_CHAT_MOCK=1 npm run dev`: it replays the recorded streams in `frontend/src/mocks/` (see the README there). The real backend endpoint (#11) isn't built yet. Components under `src/components/ui/` are copied in by the shadcn CLI (`npx shadcn@latest add ...`); prompt-kit's come from its registry, e.g. `npx shadcn@latest add "https://www.prompt-kit.com/c/message.json"`.
 
 ## Building the catalogue index
 
