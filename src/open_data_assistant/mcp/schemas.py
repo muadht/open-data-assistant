@@ -129,11 +129,36 @@ class DataPoint(BaseModel):
     )
     symbol: str | None = None
     security_level: str = Field(description="Decoded security level, e.g. 'Unclassified'.")
+    decimals: int = Field(
+        description="Decimal places StatCan publishes this value with - show it at this precision."
+    )
+    release_time: str = Field(
+        description="When StatCan released this value, YYYY-MM-DDTHH:MM, Eastern time."
+    )
 
 
 class DataResult(BaseModel):
     product_id: int
     title_en: str
+    series_title_en: str = Field(
+        description=(
+            "StatCan's name for this exact series, one member per dimension separated by ';' - "
+            "e.g. 'Ontario;Unemployment rate;Total - Gender;...'. Use it to tell series apart."
+        )
+    )
+    members: dict[str, str] = Field(
+        description=(
+            "Dimension name -> the member this series is for, e.g. {'Geography': 'Ontario'}."
+        )
+    )
+    footnotes: list[str] = Field(
+        description=(
+            "StatCan's footnotes for this series: those on the whole table, on its dimensions, "
+            "or on the selected members. They can change how the numbers should be read (e.g. "
+            "'The CPI is not a cost-of-living index'), so take them into account and mention "
+            "any that matter to the user's question."
+        )
+    )
     coordinate: str = Field(description="10-slot, dot-separated, zero-padded coordinate.")
     vector_id: int | None = Field(
         default=None,

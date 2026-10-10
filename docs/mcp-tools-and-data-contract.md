@@ -91,6 +91,19 @@ One shape, shared by chat answers, charts, and exports — all three are rendere
 DataResult {
   "product_id": 14100287,
   "title_en": "Labour force characteristics, monthly, seasonally adjusted and trend-cycle",
+  "series_title_en": "Ontario;Unemployment rate;Total - Gender;15 years and over;Estimate;Seasonally adjusted",
+  "members": {
+    "Geography": "Ontario",
+    "Labour force characteristics": "Unemployment rate",
+    "Gender": "Total - Gender",
+    "Age group": "15 years and over",
+    "Statistics": "Estimate",
+    "Data type": "Seasonally adjusted"
+  },
+  "footnotes": [
+    "The unemployment rate is the number of unemployed persons expressed as a percentage of the labour force. ...",
+    "..."
+  ],
   "coordinate": "7.7.1.1.1.1.0.0.0.0",
   "vector_id": 2063949,
   "series": [
@@ -101,7 +114,9 @@ DataResult {
       "scalar_factor_applied": true,
       "status": "normal",
       "symbol": null,
-      "security_level": "public"
+      "security_level": "public",
+      "decimals": 1,
+      "release_time": "2026-09-04T08:30"
     }
   ],
   "source_url": "https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410028701",
@@ -112,6 +127,9 @@ DataResult {
 
 This example is the real, live-verified Ontario unemployment series (question-catalogue-eval.xlsx row 1) — `title_en` is the table's `cubeTitleEn` (from `getCubeMetadata`), not the series-level title; `security_level` is `getCodeSets`'s real `securityLevelDescEn` for code 0 (`"public"`, not `"Unclassified"` — an earlier, unverified draft of this doc had that wrong).
 
+- `series_title_en` (WDS's `SeriesTitleEn`) and `members` (dimension name -> selected member name) say which series this is, so two results from the same table (e.g. Ontario vs. Alberta) can be told apart without decoding coordinates.
+- `footnotes` are the table's footnotes that apply to this series: those linked to the whole table, to a whole dimension, or to one of the selected members (WDS's footnote `link` is `dimensionPositionId: 0` for the table, `memberId: 0` for a whole dimension). Deduplicated by footnote ID, since WDS repeats a footnote once per linked member, and stripped of the HTML some footnotes contain. They're returned in full, not truncated: they carry exactly the caveats users misread (e.g. "The Consumer Price Index (CPI) is not a cost-of-living index").
+- `decimals` and `release_time` come from each WDS data point. `value` is rounded to `decimals` after the scalar factor is applied, which also removes floating-point noise from that multiply.
 - `series` is always an array, even for a single-point "latest value" answer — keeps charts, exports, and multi-period answers on one code path.
 - A suppressed value appears as a `series` entry with `value: null` and `status` explaining why, rather than being dropped — the frontend and chat layer decide how to render a gap, but they always know it's there.
 - `sourceUrl` and `retrievedAt` are mandatory on every result; this is what backs the citation and reference-period requirements in the [MVP scope](mvp-scope.md).

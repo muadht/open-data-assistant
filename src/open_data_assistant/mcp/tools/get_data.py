@@ -9,6 +9,8 @@ standard `DataResult` shape. See docs/mcp-tools-and-data-contract.md's `get_data
 
 from __future__ import annotations
 
+import html
+import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -27,7 +29,7 @@ def get_data(
     [cube_item] = client.get_cube_metadata([product_id])
     if cube_item["status"] != "SUCCESS":
         raise ValueError(f"getCubeMetadata failed for product {product_id}: {cube_item}")
-    title_en: str = cube_item["object"]["cubeTitleEn"]
+    cube = cube_item["object"]
 
     [series_item] = client.get_series_info_from_cube_pid_coord([(product_id, coordinate)])
     if series_item["status"] != "SUCCESS":
@@ -73,7 +75,10 @@ def get_data(
 
     return DataResult(
         product_id=product_id,
-        title_en=title_en,
+        title_en=cube["cubeTitleEn"],
+        series_title_en=series["SeriesTitleEn"],
+        members=_selected_members(cube, selections),
+        footnotes=_applicable_footnotes(cube, selections),
         coordinate=coordinate,
         vector_id=vector_id,
         series=data_points,
@@ -101,6 +106,32 @@ def _build_coordinate(selections: dict[int, int]) -> str:
     return ".".join(str(selections.get(position, 0)) for position in range(1, 11))
 
 
+def _selected_members(cube: dict[str, Any], selections: dict[int, int]) -> dict[str, str]:
+    members: dict[str, str] = {}
+    for dimension in cube["dimension"]:
+        member_id = selections[dimension["dimensionPositionId"]]
+        name_by_id = {m["memberId"]: m["memberNameEn"] for m in dimension["member"]}
+        members[dimension["dimensionNameEn"]] = name_by_id[member_id]
+    return members
+
+
+def _applicable_footnotes(cube: dict[str, Any], selections: dict[int, int]) -> list[str]:
+    # A footnote's link targets the whole table (dimension 0), a whole dimension (member 0),
+    # or one member. WDS repeats a footnote once per linked member, hence the dedupe by id.
+    texts: dict[int, str] = {}
+    for footnote in cube["footnote"]:
+        link = footnote["link"]
+        position, member_id = link["dimensionPositionId"], link["memberId"]
+        if position == 0 or member_id == 0 or selections.get(position) == member_id:
+            texts.setdefault(footnote["footnoteId"], _plain_text(footnote["footnotesEn"]))
+    return list(texts.values())
+
+
+def _plain_text(footnote_html: str) -> str:
+    # Some footnotes are HTML (e.g. Census table 98100001's "<p><strong>Content considerations").
+    return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", footnote_html)).split())
+
+
 def _to_data_point(
     point: dict[str, Any], series: dict[str, Any], code_sets: dict[str, Any]
 ) -> DataPoint:
@@ -116,11 +147,16 @@ def _to_data_point(
     return DataPoint(
         ref_per=point["refPer"],
         # Decimals are pre-applied by WDS; the x10^scalarFactor is not (see "WDS quirks").
-        value=None if raw_value == "" else float(raw_value) * (10 ** point["scalarFactorCode"]),
+        # Rounding to the published decimals drops float noise from the scalar-factor multiply.
+        value=None
+        if raw_value == ""
+        else round(float(raw_value) * 10 ** point["scalarFactorCode"], point["decimals"]),
         uom=uom_by_code.get(series["memberUomCode"]) or "units",
         scalar_factor_applied=True,
         status=status_by_code.get(point["statusCode"], "unknown"),
         # symbolCode 0 ("none") is represented as no symbol at all, not the literal word "none".
         symbol=None if symbol_code == 0 else symbol_by_code.get(symbol_code),
         security_level=security_by_code.get(point["securityLevelCode"], "unknown"),
+        decimals=point["decimals"],
+        release_time=point["releaseTime"],
     )

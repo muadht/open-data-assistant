@@ -94,6 +94,10 @@ def test_data_result_ontario_unemployment_rate() -> None:
     result = DataResult(
         product_id=14100287,
         title_en="Labour force characteristics, monthly, seasonally adjusted and trend-cycle",
+        series_title_en="Ontario;Unemployment rate;Total - Gender;15 years and over;Estimate;"
+        "Seasonally adjusted",
+        members={"Geography": "Ontario", "Labour force characteristics": "Unemployment rate"},
+        footnotes=["The unemployment rate is the number of unemployed persons ..."],
         coordinate="7.7.1.1.1.1.0.0.0.0",
         vector_id=2063949,
         series=[
@@ -105,6 +109,8 @@ def test_data_result_ontario_unemployment_rate() -> None:
                 status="normal",
                 symbol=None,
                 security_level="Unclassified",
+                decimals=1,
+                release_time="2026-09-04T08:30",
             )
         ],
         source_url=HttpUrl("https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410028701"),
@@ -118,6 +124,9 @@ def test_data_result_census_table_has_no_vector_id() -> None:
     result = DataResult(
         product_id=98100001,
         title_en="Population and dwelling counts: Canada, provinces and territories",
+        series_title_en="Ontario;Population, 2021",
+        members={"Geographic name": "Ontario"},
+        footnotes=[],
         coordinate="7.1.0.0.0.0.0.0.0.0",
         vector_id=None,
         series=[
@@ -129,6 +138,8 @@ def test_data_result_census_table_has_no_vector_id() -> None:
                 status="normal",
                 symbol=None,
                 security_level="Unclassified",
+                decimals=1,
+                release_time="2026-09-04T08:30",
             )
         ],
         source_url=HttpUrl("https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=9810000101"),
@@ -141,6 +152,9 @@ def test_data_result_suppressed_value_has_no_number() -> None:
     result = DataResult(
         product_id=14100287,
         title_en="...",
+        series_title_en="...",
+        members={},
+        footnotes=[],
         coordinate="7.7.1.1.1.1.0.0.0.0",
         vector_id=2063949,
         series=[
@@ -152,6 +166,8 @@ def test_data_result_suppressed_value_has_no_number() -> None:
                 status="too unreliable to be published",
                 symbol=None,
                 security_level="Unclassified",
+                decimals=1,
+                release_time="2026-09-04T08:30",
             )
         ],
         source_url=HttpUrl("https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=1410028701"),
