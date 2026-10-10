@@ -42,6 +42,10 @@ import { ProvinceMap } from './ProvinceMap'
 
 const AXIS_TICK = { fill: 'var(--muted-foreground)', fontSize: 12 }
 
+/** Up to this many periods, every point gets a marker; beyond it (e.g. 10 years of monthly
+ * data) markers would merge into a band, so only the hovered point gets one. */
+const MAX_MARKED_PERIODS = 36
+
 /** The answer's data as charts - one per unit (docs: chat/chartSpec.ts for the rules). Each
  * chart can switch to a table, which carries the same values and flags as the tooltip. */
 export function AnswerChart({ results }: { results: DataResult[] }) {
@@ -142,6 +146,7 @@ function LineView({ spec }: { spec: LineChartSpec }) {
     ),
   }))
   const decimals = Math.max(...spec.series.map((s) => s.decimals))
+  const showMarkers = spec.rows.length <= MAX_MARKED_PERIODS
   return (
     <div className="h-60" role="img" aria-label={`Line chart: ${spec.title}`}>
       <ResponsiveContainer width="100%" height="100%">
@@ -149,7 +154,11 @@ function LineView({ spec }: { spec: LineChartSpec }) {
           data={data}
           margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
         >
-          <CartesianGrid vertical={false} stroke="var(--border)" />
+          <CartesianGrid
+            vertical={false}
+            stroke="var(--border)"
+            strokeDasharray="2 4"
+          />
           <XAxis
             dataKey="refPer"
             tickFormatter={label}
@@ -187,13 +196,26 @@ function LineView({ spec }: { spec: LineChartSpec }) {
               key={s.key}
               dataKey={s.key}
               name={s.name}
-              type="monotone"
+              // Straight segments: each point is a published value, and a curve between them
+              // would suggest values that were never published.
+              type="linear"
               stroke={s.color}
               strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
-              dot={false}
-              activeDot={{ r: 4, stroke: 'var(--background)', strokeWidth: 2 }}
+              // A marker on every period, ringed in the surface colour so overlapping series
+              // stay apart - unless there are so many that markers would merge into a band.
+              dot={
+                showMarkers
+                  ? {
+                      r: 4,
+                      fill: s.color,
+                      stroke: 'var(--background)',
+                      strokeWidth: 2,
+                    }
+                  : false
+              }
+              activeDot={{ r: 5, stroke: 'var(--background)', strokeWidth: 2 }}
               // A suppressed or missing value breaks the line - never bridged.
               connectNulls={false}
               isAnimationActive={false}
