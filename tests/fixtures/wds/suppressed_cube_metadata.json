@@ -1,5 +1,5 @@
 {
-  "description": "getCubeMetadata for product 13100778 - trimmed to just the table-level fields get_data reads (cubeTitleEn). Constructed to match suppressed_value.json/suppressed_series_info.json, for the same reason those are constructed rather than captured live.",
+  "description": "getCubeMetadata for product 13100778 - table-level fields plus one member per dimension, matching suppressed_series_info.json's coordinate (1.1.1.1). Constructed to match suppressed_value.json/suppressed_series_info.json, for the same reason those are constructed rather than captured live.",
   "captured_at": "2026-10-08T00:00:00Z",
   "source": "constructed",
   "request": {
@@ -17,11 +17,94 @@
       "object": {
         "productId": "13100778",
         "cubeTitleEn": "Suppressed example table",
-        "cubeTitleFr": "Table d'exemple supprimée",
+        "cubeTitleFr": "Table d'exemple supprim\u00e9e",
         "cubeStartDate": "2020-01-01",
         "cubeEndDate": "2026-06-01",
         "frequencyCode": 6,
-        "archiveStatusCode": "2"
+        "archiveStatusCode": "2",
+        "dimension": [
+          {
+            "dimensionPositionId": 1,
+            "dimensionNameEn": "Geography",
+            "dimensionNameFr": "Geography",
+            "hasUom": false,
+            "member": [
+              {
+                "memberId": 1,
+                "parentMemberId": null,
+                "memberNameEn": "Canada",
+                "memberNameFr": "Canada",
+                "classificationCode": null,
+                "classificationTypeCode": null,
+                "geoLevel": null,
+                "vintage": null,
+                "terminated": 0,
+                "memberUomCode": null
+              }
+            ]
+          },
+          {
+            "dimensionPositionId": 2,
+            "dimensionNameEn": "Category",
+            "dimensionNameFr": "Category",
+            "hasUom": false,
+            "member": [
+              {
+                "memberId": 1,
+                "parentMemberId": null,
+                "memberNameEn": "Some category",
+                "memberNameFr": "Some category",
+                "classificationCode": null,
+                "classificationTypeCode": null,
+                "geoLevel": null,
+                "vintage": null,
+                "terminated": 0,
+                "memberUomCode": null
+              }
+            ]
+          },
+          {
+            "dimensionPositionId": 3,
+            "dimensionNameEn": "Characteristic",
+            "dimensionNameFr": "Characteristic",
+            "hasUom": false,
+            "member": [
+              {
+                "memberId": 1,
+                "parentMemberId": null,
+                "memberNameEn": "Suppressed series",
+                "memberNameFr": "Suppressed series",
+                "classificationCode": null,
+                "classificationTypeCode": null,
+                "geoLevel": null,
+                "vintage": null,
+                "terminated": 0,
+                "memberUomCode": null
+              }
+            ]
+          },
+          {
+            "dimensionPositionId": 4,
+            "dimensionNameEn": "Statistics",
+            "dimensionNameFr": "Statistics",
+            "hasUom": false,
+            "member": [
+              {
+                "memberId": 1,
+                "parentMemberId": null,
+                "memberNameEn": "Estimate",
+                "memberNameFr": "Estimate",
+                "classificationCode": null,
+                "classificationTypeCode": null,
+                "geoLevel": null,
+                "vintage": null,
+                "terminated": 0,
+                "memberUomCode": null
+              }
+            ]
+          }
+        ],
+        "footnote": []
       }
     }
   ]
