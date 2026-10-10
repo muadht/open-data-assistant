@@ -5,6 +5,21 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StatCan Data Assistant</title>
+    <script>
+      // The theme before the first paint, so a dark page doesn't flash light (#78). Mirrors
+      // applyTheme in src/settings/settings.ts, which takes over once the app loads.
+      try {
+        var theme = JSON.parse(
+          localStorage.getItem('open-data-assistant:settings') || '{}',
+        ).theme
+        var dark =
+          theme === 'dark' ||
+          (theme !== 'light' &&
+            matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.toggle('dark', dark)
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
