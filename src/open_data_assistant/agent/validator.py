@@ -22,7 +22,7 @@ from .outcomes import Answer, Outcome
 
 def validate_outcome(ctx: RunContext[AgentDeps], outcome: Outcome) -> Outcome:
     if isinstance(outcome, Answer):
-        _validate_answer(outcome, _fetched_data(ctx.messages))
+        _validate_answer(outcome, fetched_data(ctx.messages))
     return outcome
 
 
@@ -81,7 +81,7 @@ def _point(result: DataResult, ref_per: str) -> DataPoint | None:
     return next((p for p in result.series if p.ref_per == ref_per), None)
 
 
-def _fetched_data(messages: list[ModelMessage]) -> dict[str, DataResult]:
+def fetched_data(messages: list[ModelMessage]) -> dict[str, DataResult]:
     """Every DataResult returned by get_data so far in the conversation, keyed by coordinate
     - earlier turns included, so a follow-up may reuse data it already fetched."""
     fetched: dict[str, DataResult] = {}

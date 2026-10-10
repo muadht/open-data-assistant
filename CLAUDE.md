@@ -60,11 +60,16 @@ src/open_data_assistant/
     tools.py           # Agent-facing wrappers around the 4 MCP tool functions.
     system_prompt.py    # Trust/accuracy rules from docs/mvp-scope.md, as agent instructions.
     agent.py             # build_agent(model) -> Agent. Model is left unset here - see #9.
+  api/
+    app.py             # create_app(agent, make_deps) / build_app() - the FastAPI app (#11).
+    chat.py            # POST /chat: agent events -> the SSE stream in docs/chat-api.md.
+    sessions.py        # In-memory conversation history per session.
+    cli.py             # `uv run api` -> uvicorn on port 8010.
 tests/              # mirrors the src/ layout above
 docs/                  # planning documents - read these, don't duplicate their content here
 ```
 
-As the orchestration service gets built (the FastAPI layer, ticket #11), it goes under `src/open_data_assistant/` as a sibling package (e.g. `api/`), not inside `agent/` or `mcp/`.
+The orchestration service's HTTP layer lives in `api/`, a sibling of `agent/` and `mcp/`, not inside either.
 
 Running `build-catalogue`/`ingest-opensearch` for real needs a running OpenSearch instance - `docker compose up -d` starts a local one (`docker-compose.yml`, dev-only: security disabled, not a deployment setup; the backend from #11 can join the same file later) - and will download the `sentence-transformers/all-MiniLM-L6-v2` model on first use.
 

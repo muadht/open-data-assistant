@@ -18,6 +18,17 @@ uv run ruff check .
 uv run mypy .
 ```
 
+## Chat API
+
+`POST /chat` streams the agent's answer as server-sent events, in the format in [docs/chat-api.md](docs/chat-api.md).
+
+```bash
+cp .env.example .env   # then set OPENAI_API_KEY
+uv run api             # http://localhost:8010
+```
+
+It needs OpenSearch running with the catalogue index built (see "Building the catalogue index" below) and makes live calls to StatCan's WDS. The model defaults to `openai:gpt-5-mini`; set `OPEN_DATA_ASSISTANT_MODEL` to change it. Sessions live in memory, so restarting the API starts every conversation fresh.
+
 ## Frontend
 
 The chat UI lives in `frontend/`: Vite + React + TypeScript, with shadcn/ui and prompt-kit components (see [TECH_STACK.md](TECH_STACK.md)). Needs Node 20.19+.
@@ -32,7 +43,7 @@ npm run format:check  # prettier (npm run format to fix)
 npm test              # unit tests (Vitest)
 ```
 
-`npm test` runs the unit tests (Vitest). To try the chat without the backend, start it with `VITE_CHAT_MOCK=1 npm run dev`: it replays the recorded streams in `frontend/src/mocks/` (see the README there). The real backend endpoint (#11) isn't built yet. Components under `src/components/ui/` are copied in by the shadcn CLI (`npx shadcn@latest add ...`); prompt-kit's come from its registry, e.g. `npx shadcn@latest add "https://www.prompt-kit.com/c/message.json"`.
+`npm test` runs the unit tests (Vitest). `npm run dev` talks to the chat API on port 8010 (start it with `uv run api`; the dev server proxies `/chat` there). To try the chat without the backend, start it with `VITE_CHAT_MOCK=1 npm run dev`: it replays the recorded streams in `frontend/src/mocks/` (see the README there). Components under `src/components/ui/` are copied in by the shadcn CLI (`npx shadcn@latest add ...`); prompt-kit's come from its registry, e.g. `npx shadcn@latest add "https://www.prompt-kit.com/c/message.json"`.
 
 ## Building the catalogue index
 
