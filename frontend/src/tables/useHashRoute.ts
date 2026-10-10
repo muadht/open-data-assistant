@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
-// Two views in plain URL hashes - "#/" (chat) and "#/browse?q=..." - so the back button
-// works and a filtered browse view can be shared as a link, without a routing library.
+// Plain URL hashes - "#/" (the chat) and "#/browse?q=..." (the chat with the browse panel
+// open, #74) - so the back button works and a filtered browse view can be shared as a link,
+// without a routing library.
 
 export type View = 'chat' | 'browse'
 

@@ -20,7 +20,7 @@ Content-Type: application/json
 - `session_id`: omit or `null` to start a new conversation; the server creates one and returns
   its ID in the first event. Send it back with every later message.
 - `message`: the user's text, 1-2000 characters.
-- `table_id` (optional): a table the user picked on the browse page ("Ask about this table", #56). The agent is told for that run to answer from it and skip searching; if the question can't be answered from it, it says so.
+- `table_id` (optional): a table the user picked while browsing or from a table's details ("Ask about this table", #56). The agent is told for that run to answer from it and skip searching; if the question can't be answered from it, it says so.
 
 Errors **before** the stream starts are plain HTTP responses with a JSON body
 `{"detail": "..."}`:

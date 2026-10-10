@@ -1,15 +1,69 @@
-import { ExternalLink, Loader2, MessageSquare } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Loader2, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { TableDetails } from '@/tables/api'
-import type { LoadedDetails } from '@/tables/details'
-
-// A table's details, shared by the browse page's drawer (TableDrawer) and the chat's side
-// panel (TablePanel, #70): each frames the same pieces in its own container.
+import {
+  tableSummary,
+  useTableDetails,
+  type LoadedDetails,
+} from '@/tables/details'
+import { PanelClose } from './PanelClose'
 
 const MEMBERS_SHOWN = 8
 
+/** A table's details in the side panel (#70): what it is, its dimensions and their main
+ * members, and the ways to use it - ask about it, or open it on StatCan. `onBack` returns
+ * to the browse list it was opened from (#74). */
+export function TableDetailsPane({
+  productId,
+  onBack,
+  onClose,
+  onAsk,
+}: {
+  productId: number
+  onBack?: () => void
+  onClose: () => void
+  onAsk: (table: { productId: number; title: string }) => void
+}) {
+  const loaded = useTableDetails(productId)
+  const details = loaded?.details
+  return (
+    <>
+      <header className="space-y-2 border-b p-4">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="-ml-1 inline-flex items-center gap-1 rounded px-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-3.5" aria-hidden />
+            Back to results
+          </button>
+        )}
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1 space-y-1">
+            <h2
+              tabIndex={-1}
+              className="leading-snug font-semibold focus:outline-none"
+            >
+              {details?.table.title_en ?? 'Table details'}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {tableSummary(productId, details)}
+            </p>
+          </div>
+          <PanelClose label="Close table details" onClose={onClose} />
+        </div>
+      </header>
+      <TableStructure loaded={loaded} />
+      <footer className="flex gap-2 border-t p-4">
+        <TableActions productId={productId} details={details} onAsk={onAsk} />
+      </footer>
+    </>
+  )
+}
+
 /** Subjects and dimensions, with loading and error states. */
-export function TableStructure({ loaded }: { loaded: LoadedDetails | null }) {
+function TableStructure({ loaded }: { loaded: LoadedDetails | null }) {
   const details = loaded?.details
   return (
     <div className="flex-1 space-y-6 overflow-y-auto p-4 text-sm">
@@ -86,7 +140,7 @@ export function TableStructure({ loaded }: { loaded: LoadedDetails | null }) {
 }
 
 /** Ask about this table, and View on StatCan. */
-export function TableActions({
+function TableActions({
   productId,
   details,
   onAsk,

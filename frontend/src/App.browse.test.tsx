@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-// The browse page, table drawer and "Ask about this table" (#56), and a table's details beside
-// the chat (#70), with the tables API stubbed at fetch and the chat answered by a capturing
-// transport.
+// Browsing tables and a table's details in the panel beside the chat (#56, #70, #74), and
+// "Ask about this table", with the tables API stubbed at fetch and the chat answered by a
+// capturing transport.
 import {
   cleanup,
   fireEvent,
@@ -138,8 +138,17 @@ describe('Browse tables', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Browse tables' }))
 
     const results = await screen.findByRole('region', { name: 'Results' })
-    expect(within(results).getByText('1 table')).toBeTruthy()
-    // One divided list: what the table is on the left, when and how often on the right.
+    // The count and the secondary controls share one line above the scrolling list.
+    expect(screen.getByText('1 table')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show 7 archived' }))
+    await waitFor(() =>
+      expect(window.location.hash).toBe('#/browse?include_archived=true'),
+    )
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Hide archived' }),
+    )
+    await waitFor(() => expect(window.location.hash).toBe('#/browse'))
+    // Each row: the title, then what it covers on one small line.
     expect(within(results).getByText('Consumer price indexes')).toBeTruthy()
     expect(within(results).getByText('Updated Sep 14, 2026')).toBeTruthy()
     expect(within(results).getByText('Monthly · 1992–2026')).toBeTruthy()
@@ -204,7 +213,30 @@ describe('Browse tables', () => {
     )
   })
 
-  it('opens a table in the drawer and asks about it from the chat', async () => {
+  it('opens beside the chat, and reopens with the same filters', async () => {
+    window.location.hash = '#/browse?frequency=Monthly'
+    render(<App />)
+    const panel = await screen.findByRole('complementary', {
+      name: 'Browse tables',
+    })
+    await within(panel).findByRole('region', { name: 'Results' })
+    // The chat stays usable beside it.
+    expect(screen.getByLabelText('Your question')).toBeTruthy()
+
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Close browse tables' }),
+    )
+    expect(screen.queryByRole('complementary')).toBeNull()
+    expect(window.location.hash).toBe('#/')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Browse tables' }))
+    expect(window.location.hash).toBe('#/browse?frequency=Monthly')
+    expect(
+      await screen.findByRole('button', { name: 'Frequency: Monthly' }),
+    ).toBeTruthy()
+  })
+
+  it('shows a table in the same panel, back to the results, and asks about it', async () => {
     const sent: ChatRequest[] = []
     const transport: ChatTransport = async (request) => {
       sent.push(request)
@@ -216,17 +248,41 @@ describe('Browse tables', () => {
       await screen.findByRole('button', { name: /Consumer Price Index/ }),
     )
 
-    const drawer = await screen.findByRole('dialog')
-    expect(await within(drawer).findByText('Canada')).toBeTruthy()
-    expect(within(drawer).getByText('+29 more')).toBeTruthy()
+    const panel = await screen.findByRole('complementary', {
+      name: 'Table details',
+    })
+    expect(await within(panel).findByText('Canada')).toBeTruthy()
+    expect(within(panel).getByText('+29 more')).toBeTruthy()
     expect(requested()).toContain('/tables/18100006')
+    expect(document.activeElement?.textContent).toMatch(/Consumer Price Index/)
+
+    // Back to the same results, without searching again.
+    const searches = requested().filter((url) =>
+      url.startsWith('/tables/search'),
+    )
+    fireEvent.click(
+      within(panel).getByRole('button', { name: /Back to results/ }),
+    )
+    expect(
+      await screen.findByRole('complementary', { name: 'Browse tables' }),
+    ).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Results' })).toBeTruthy()
+    expect(
+      requested().filter((url) => url.startsWith('/tables/search')),
+    ).toEqual(searches)
 
     fireEvent.click(
-      within(drawer).getByRole('button', { name: /Ask about this table/ }),
+      screen.getByRole('button', { name: /Consumer Price Index/ }),
+    )
+    // "Ask about this table" is enabled once the details have loaded.
+    expect(await screen.findByText('Canada')).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole('button', { name: /Ask about this table/ }),
     )
 
-    // Back in the chat, with the table pinned above the input and sent with the message.
+    // Pinned above the input and sent with the message; the panel stays open.
     expect(screen.getByText(/Asking about: Consumer Price Index/)).toBeTruthy()
+    expect(screen.getByRole('complementary')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Your question'), {
       target: { value: 'What was it in August?' },
     })
@@ -327,5 +383,28 @@ describe('Table structure in the chat', () => {
     const drawer = await screen.findByRole('dialog')
     expect(await within(drawer).findByText('Canada')).toBeTruthy()
     expect(screen.queryByRole('complementary')).toBeNull()
+  })
+
+  it('offers no way back to the list for a table opened from the chat', async () => {
+    window.location.hash = '#/browse?frequency=Monthly'
+    const sources = await answered()
+    await screen.findByRole('complementary', { name: 'Browse tables' })
+    fireEvent.click(
+      within(sources).getByRole('button', {
+        name: /^Labour force characteristics/,
+      }),
+    )
+    const panel = await screen.findByRole('complementary', {
+      name: 'Table details',
+    })
+    expect(
+      within(panel).queryByRole('button', { name: /Back to results/ }),
+    ).toBeNull()
+
+    // The list is still there, as it was, from the header.
+    fireEvent.click(screen.getByRole('button', { name: 'Browse tables' }))
+    expect(
+      await screen.findByRole('button', { name: 'Frequency: Monthly' }),
+    ).toBeTruthy()
   })
 })

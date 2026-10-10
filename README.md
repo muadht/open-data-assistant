@@ -20,7 +20,7 @@ uv run mypy .
 
 ## Chat API
 
-`POST /chat` streams the agent's answer as server-sent events, in the format in [docs/chat-api.md](docs/chat-api.md). The same app serves read-only catalogue endpoints for the "Browse tables" page ([docs/tables-api.md](docs/tables-api.md)).
+`POST /chat` streams the agent's answer as server-sent events, in the format in [docs/chat-api.md](docs/chat-api.md). The same app serves read-only catalogue endpoints for "Browse tables" ([docs/tables-api.md](docs/tables-api.md)).
 
 ```bash
 cp .env.example .env   # then set OPENAI_API_KEY
