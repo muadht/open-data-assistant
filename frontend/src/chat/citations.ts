@@ -1,4 +1,5 @@
 import { answerDetails, type SeriesDetails } from './answerDetails'
+import { periodLabeller } from './chartSpec'
 import type { AnswerEvent } from './events'
 import { distinguishingNames, sharedMembers } from './seriesNames'
 
@@ -81,4 +82,13 @@ export function linkCitations(text: string, sourceOfValue: number[]): string {
       .filter((n): n is number => Boolean(n))
     return [...new Set(numbers)].map((n) => `[${n}](#cite-${n})`).join('')
   })
+}
+
+/** Reference periods as a reader wants them: one or two listed ("2026-08"), more as a range
+ * ("2016–2025 (10 periods)"). Years alone when every period is 1 January, as on the chart. */
+export function formatPeriods(periods: string[]): string {
+  const sorted = [...periods].sort()
+  const label = periodLabeller(sorted)
+  if (sorted.length <= 2) return sorted.map(label).join(', ')
+  return `${label(sorted[0])}–${label(sorted.at(-1)!)} (${sorted.length} periods)`
 }

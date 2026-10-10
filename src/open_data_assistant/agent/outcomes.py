@@ -30,15 +30,16 @@ class Answer(BaseModel):
     text: str = Field(
         description=(
             "A short plain-language answer leading with the numbers and their reference "
-            "period, each number followed by its citation marker [n] - its 1-based position "
-            "in `values`. Name any quality flag or suppression on a value you use. No URLs "
+            "period. Cite each series once, with a marker [n] after its first mention (n = "
+            "the 1-based position in `values` of a value from that series). Name any quality "
+            "flag or suppression on a value you use. No URLs "
             "or IDs: the app shows each series' source, flags and a chart beneath the answer."
         )
     )
     values: list[UsedValue] = Field(
         description=(
-            "Every number stated in `text`, each traced to its data point, in the order of "
-            "their citation markers: [1] is the first entry, [2] the second, and so on."
+            "Every number stated in `text`, each traced to its data point. Citation "
+            "markers refer to positions in this list: [1] is the first entry, and so on."
         )
     )
 

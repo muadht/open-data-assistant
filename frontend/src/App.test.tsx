@@ -60,7 +60,7 @@ describe('App with mock streams', () => {
 
     // Each number in the text carries a numbered citation linking to its source (#63).
     const albertaMarker = screen.getByRole('link', {
-      name: 'Source 1: Alberta, 2026-08-01',
+      name: 'Source 1: Alberta, 2026-08',
     })
     expect(albertaMarker.textContent).toBe('1')
     expect(albertaMarker.getAttribute('href')).toContain(
@@ -68,7 +68,7 @@ describe('App with mock streams', () => {
     )
     expect(albertaMarker.getAttribute('target')).toBe('_blank')
     expect(
-      screen.getByRole('link', { name: 'Source 2: Ontario, 2026-08-01' }),
+      screen.getByRole('link', { name: 'Source 2: Ontario, 2026-08' }),
     ).toBeTruthy()
 
     // Sources collapse to one line; expanded, a numbered list named by what differs, with
@@ -81,8 +81,8 @@ describe('App with mock streams', () => {
         .getAllByRole('listitem')
         .map((item) => item.textContent),
     ).toEqual([
-      '1.Alberta · v41692327 · 2026-08-01',
-      '2.Ontario · v41691919 · 2026-08-01',
+      '1.Alberta · v41692327 · 2026-08',
+      '2.Ontario · v41691919 · 2026-08',
     ])
     expect(within(sources).getByText(/StatCan notes \(\d+\)/)).toBeTruthy()
 

@@ -1,5 +1,9 @@
 import { AlertTriangle, ChevronRight, ExternalLink } from 'lucide-react'
-import type { CitedSource, Citations } from '@/chat/citations'
+import {
+  formatPeriods,
+  type CitedSource,
+  type Citations,
+} from '@/chat/citations'
 import { tableNumber } from '@/chat/tables'
 import {
   HoverCard,
@@ -18,7 +22,7 @@ export function CitationMarker({ source }: { source: CitedSource }) {
           href={source.link}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={`Source ${source.number}: ${source.shortName}, ${source.periodsUsed.join(', ')}${source.flags.length ? `, flagged: ${source.flags.join('; ')}` : ''}`}
+          aria-label={`Source ${source.number}: ${source.shortName}, ${formatPeriods(source.periodsUsed)}${source.flags.length ? `, flagged: ${source.flags.join('; ')}` : ''}`}
           className={
             'ml-0.5 inline-flex min-w-4 -translate-y-1 items-center justify-center rounded px-1 align-baseline text-[0.65rem] leading-4 font-medium no-underline hover:bg-foreground hover:text-background ' +
             (source.flags.length
@@ -44,7 +48,7 @@ function SourceSummary({ source }: { source: CitedSource }) {
         {source.table.title} ({tableNumber(source.table.productId)})
       </p>
       <p className="text-xs text-muted-foreground">
-        Reference period {source.periodsUsed.join(', ')} · released{' '}
+        Reference period {formatPeriods(source.periodsUsed)} · released{' '}
         {source.releasedOn.join(', ')}
       </p>
       <Flags flags={source.flags} />
@@ -111,7 +115,7 @@ export function AnswerSources({ citations }: { citations: Citations }) {
                     </a>
                     <span className="text-xs">
                       {source.vectorId !== null && ` · v${source.vectorId}`} ·{' '}
-                      {source.periodsUsed.join(', ')}
+                      {formatPeriods(source.periodsUsed)}
                     </span>
                     <Flags flags={source.flags} />
                   </span>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { citations, linkCitations } from './citations'
+import { citations, formatPeriods, linkCitations } from './citations'
 import type { AnswerEvent, DataResult } from './events'
 
 function result(geo: string, extra: Record<string, string> = {}): DataResult {
@@ -87,5 +87,14 @@ describe('linkCitations', () => {
     expect(linkCitations('Rose from 6.8 to 7.0 [1][2] [9].', [1, 1])).toBe(
       'Rose from 6.8 to 7.0 [1](#cite-1) .',
     )
+  })
+})
+
+describe('formatPeriods', () => {
+  it('lists one or two periods and collapses more into a range', () => {
+    expect(formatPeriods(['2026-08-01'])).toBe('2026-08')
+    expect(formatPeriods(['2026-08-01', '2025-08-01'])).toBe('2025-08, 2026-08')
+    const years = Array.from({ length: 10 }, (_, i) => `${2016 + i}-01-01`)
+    expect(formatPeriods(years)).toBe('2016–2025 (10 periods)')
   })
 })
