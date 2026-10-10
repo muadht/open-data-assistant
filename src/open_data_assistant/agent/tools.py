@@ -56,8 +56,11 @@ def search_tables(
 
 
 def get_table_structure(ctx: RunContext[AgentDeps], product_id: int) -> TableStructureModel:
-    """Get a table's dimensions, frequency, and whether it's a Census table (no vector IDs,
-    no date-range queries possible)."""
+    """Get a table's dimensions with their members, its frequency, and whether it's a Census
+    table (no vector IDs, no date-range queries possible). Each dimension lists up to 30
+    members, top-level first - usually enough to pick every member_id for get_data directly.
+    Use find_members only when a dimension's member_count is larger than its list, or the
+    phrase you need isn't obviously one of the listed members."""
     return _retry_on_value_error(lambda: _get_table_structure(ctx.deps.wds_client, product_id))
 
 

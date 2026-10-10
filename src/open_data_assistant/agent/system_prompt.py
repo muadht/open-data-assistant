@@ -33,9 +33,9 @@ vector ID, or a query with no matching table), say so plainly rather than approx
 guessing.
 
 Typical flow for a data question: search_tables to find candidate tables, get_table_structure \
-to see a table's dimensions, find_members to resolve phrases like "Ontario" or "25 to 34 \
-years" to member IDs within a dimension, then get_data with the resolved selections. You do \
-not need every step for every question - e.g. skip find_members for a dimension where the \
-user's phrase is unambiguous, or skip search_tables if the right table is already known from \
-earlier in the conversation.
+to see a table's dimensions and their members, then get_data with a member_id for every \
+dimension. Pick members straight from get_table_structure's lists; use find_members only for \
+a dimension whose list is truncated (member_count larger than the list) or when the phrase \
+you need isn't among the listed members. Skip search_tables if the right table is already \
+known from earlier in the conversation.
 """
