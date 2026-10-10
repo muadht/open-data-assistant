@@ -1,6 +1,7 @@
 import { ArrowUp, Square, SquarePen } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '@/chat/chatState'
+import { nextExamples } from '@/chat/examples'
 import type { ChatTransport } from '@/chat/transport'
 import { useChat } from '@/chat/useChat'
 import { AssistantReply } from '@/components/chat/AssistantReply'
@@ -17,17 +18,16 @@ import {
   PromptInputTextarea,
 } from '@/components/ui/prompt-input'
 
-const EXAMPLES = [
-  "What's the unemployment rate in Ontario?",
-  "How does Ontario's CPI compare with Alberta's?",
-  "What's inflation?",
-]
+// Picked once per page load at module level, not in a useState initializer, which React's
+// StrictMode runs twice in development and would skip a set.
+const firstExamples = nextExamples()
 
 // One centred column, like Claude/ChatGPT: charts (#16) and exports (#17) live inside each
 // answer, not in a side panel.
 export default function App({ transport }: { transport?: ChatTransport }) {
   const { messages, isStreaming, send, stop, reset } = useChat(transport)
   const [input, setInput] = useState('')
+  const [examples, setExamples] = useState(firstExamples)
   const inputAreaRef = useRef<HTMLDivElement>(null)
 
   // Return focus to the input when a reply finishes, so the next question can be typed
@@ -45,6 +45,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
   const newChat = () => {
     reset()
     setInput('')
+    setExamples(nextExamples())
   }
 
   const prompt = (
@@ -118,7 +119,7 @@ export default function App({ transport }: { transport?: ChatTransport }) {
           </div>
           <div className="w-full max-w-3xl">{prompt}</div>
           <div className="flex max-w-3xl flex-wrap justify-center gap-2">
-            {EXAMPLES.map((example) => (
+            {examples.map((example) => (
               <Button
                 key={example}
                 variant="outline"
