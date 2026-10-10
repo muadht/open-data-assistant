@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import HttpUrl
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, DeltaToolCalls, FunctionModel
 from pydantic_ai.usage import UsageLimits
@@ -17,8 +19,16 @@ from pytest_httpx import HTTPXMock
 from open_data_assistant.agent.agent import build_agent
 from open_data_assistant.agent.deps import AgentDeps
 from open_data_assistant.api.app import create_app
-from open_data_assistant.api.chat import tool_label
+from open_data_assistant.api.chat import tool_detail, tool_label
 from open_data_assistant.api.sessions import SessionStore
+from open_data_assistant.mcp.schemas import (
+    DataPoint,
+    DataResult,
+    DimensionInfo,
+    MemberCandidate,
+    TableSearchResult,
+    TableStructure,
+)
 from open_data_assistant.wds.client import BASE_URL, WdsClient
 from tests.agent.test_agent import ONTARIO_ANSWER_ARGS
 from tests.fixtures.wds import load_wds_fixture
@@ -134,7 +144,13 @@ def test_answer_stream(httpx_mock: HTTPXMock) -> None:
     session = events[0][1]
     assert session["message_id"] == "m1"
     assert events[1][1]["label"] == "Fetching data"
-    assert events[2][1] == {"call_id": events[1][1]["call_id"], "ok": True}
+    assert events[1][1]["tool"] == "get_data"
+    # What the step found, from the tool's own result: the series and its period.
+    assert events[2][1] == {
+        "call_id": events[1][1]["call_id"],
+        "ok": True,
+        "detail": "Ontario · 2026-08",
+    }
 
     answer = events[-1][1]
     assert answer["message_id"] == "m1"
@@ -208,7 +224,9 @@ def test_related_tables_come_from_the_runs_search(httpx_mock: HTTPXMock) -> None
     with _client(steps, search=search) as client:
         events = _events(client, "What's the unemployment rate in Ontario?")
 
-    assert events[1][1]["label"] == "Searching StatCan tables"
+    assert events[1][1]["label"] == 'Searching StatCan tables for "unemployment Ontario"'
+    detail = events[2][1]["detail"]
+    assert detail == "Top match: Employment and unemployment rate, monthly (14-10-0374-01)"
     [related] = events[-1][1]["related_tables"]
     assert related["product_id"] == 14100374
 
@@ -336,7 +354,8 @@ def test_idle_sessions_expire() -> None:
 @pytest.mark.parametrize(
     ("tool", "args", "label"),
     [
-        ("search_tables", {"query": "cpi"}, "Searching StatCan tables"),
+        ("search_tables", {"query": "cpi"}, 'Searching StatCan tables for "cpi"'),
+        ("search_tables", {}, "Searching StatCan tables"),
         ("get_table_structure", {"product_id": 1}, "Reading the table's structure"),
         ("find_members", {"query": "Ontario"}, 'Finding "Ontario"'),
         ("get_data", {"selections": {"1": [14, 23], "2": 2}}, "Fetching data for 2 series"),
@@ -350,3 +369,86 @@ def test_idle_sessions_expire() -> None:
 )
 def test_tool_labels(tool: str, args: dict[str, Any], label: str) -> None:
     assert tool_label(tool, args) == label
+
+
+# ------------------------------------------------------ what each step found (progress details)
+
+
+def _structure() -> TableStructure:
+    return TableStructure(
+        product_id=14100287,
+        title_en="Labour force characteristics",
+        dimensions=[
+            DimensionInfo(
+                dimension_position_id=1,
+                name_en="Geography",
+                has_uom=False,
+                members=[],
+                member_count=14,
+            ),
+            DimensionInfo(
+                dimension_position_id=2, name_en="Gender", has_uom=False, members=[], member_count=3
+            ),
+        ],
+        default_scalar_factor="units",
+        frequency="Monthly",
+        is_census_table=False,
+    )
+
+
+def _result(members: dict[str, str], ref_pers: list[str]) -> DataResult:
+    point = DataPoint(
+        ref_per="2026-09-01",
+        value=1.0,
+        uom="Percent",
+        scalar_factor_applied=True,
+        status="normal",
+        symbol=None,
+        security_level="public",
+        decimals=1,
+        release_time="2026-10-09T08:30",
+    )
+    return DataResult(
+        product_id=14100287,
+        title_en="Labour force characteristics",
+        series_title_en=";".join(members.values()),
+        members=members,
+        footnotes=[],
+        coordinate=".".join(members.values()),
+        vector_id=None,
+        series=[point.model_copy(update={"ref_per": r}) for r in ref_pers],
+        source_url=HttpUrl("https://example.org"),
+        series_url=None,
+        retrieved_at=datetime(2026, 10, 10, tzinfo=UTC),
+    )
+
+
+def test_details_say_what_each_step_found() -> None:
+    assert tool_detail("search_tables", TableSearchResult(candidates=[])) == "No matching tables"
+    assert tool_detail("get_table_structure", _structure()) == "14-10-0287-01: Geography, Gender"
+    members = [
+        MemberCandidate(member_id=i, name_en=n, terminated=False)
+        for i, n in enumerate(["A", "B", "C", "D"])
+    ]
+    assert tool_detail("find_members", members) == "A, B, C and 1 more"
+    assert tool_detail("find_members", []) == "No match"
+
+
+def test_the_data_detail_names_what_varies_and_the_periods() -> None:
+    provinces = ["Canada", "Quebec", "Ontario", "Alberta"]
+    results = [
+        _result({"Geography": g, "Gender": s}, ["2026-08-01", "2026-09-01"])
+        for g in provinces
+        for s in ("Men+", "Women+")
+    ]
+    assert tool_detail("get_data", results) == (
+        "Canada … Alberta × Men+, Women+ · 2026-08 to 2026-09"
+    )
+    single = [_result({"Geography": "Ontario", "Gender": "Total"}, ["2026-09-01"])]
+    assert tool_detail("get_data", single) == "Ontario · 2026-09"
+
+
+def test_an_unexpected_result_just_has_no_detail() -> None:
+    assert tool_detail("get_data", "not a list") is None
+    assert tool_detail("search_tables", {"candidates": "garbled"}) is None
+    assert tool_detail("unknown_tool", []) is None
