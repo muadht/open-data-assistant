@@ -143,3 +143,11 @@ def test_code_sets_has_the_lookup_tables_other_tools_need() -> None:
     codes = fixture["body"]["object"]
     for table in ("status", "symbol", "scalar", "frequency", "uom", "securityLevel"):
         assert table in codes
+
+
+def test_batched_data_point_comes_back_in_a_different_order_than_requested() -> None:
+    fixture = load_wds_fixture("batched_data_point")
+    requested = [item["vectorId"] for item in fixture["request"]["body"]]
+    returned = [item["object"]["vectorId"] for item in fixture["body"]]
+    assert sorted(requested) == sorted(returned)
+    assert requested != returned
