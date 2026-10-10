@@ -44,6 +44,20 @@ describe('App with mock streams', () => {
       }),
     )
 
+    // One line chart for the comparison; its table view lists the same values.
+    const chart = await screen.findByRole('figure')
+    expect(within(chart).getByText('All-items')).toBeTruthy()
+    expect(
+      within(chart).getByRole('img', { name: 'Line chart: All-items' }),
+    ).toBeTruthy()
+    fireEvent.click(
+      within(chart).getByRole('button', { name: /Show as table/ }),
+    )
+    const table = within(chart).getByRole('table')
+    expect(within(table).getByText('Alberta')).toBeTruthy()
+    expect(within(table).getAllByRole('row')).toHaveLength(14) // header + 13 months
+    expect(within(table).getByText('179.2')).toBeTruthy()
+
     // A citation chip per series; clicking one shows its period, flags and notes.
     const sources = await screen.findByRole('region', { name: 'Sources' })
     const alberta = within(sources).getByRole('button', {
