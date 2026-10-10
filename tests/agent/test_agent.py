@@ -20,7 +20,7 @@ from pydantic_ai.messages import (
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pytest_httpx import HTTPXMock
 
-from open_data_assistant.agent.agent import AgentDeps, build_agent
+from open_data_assistant.agent.agent import AgentDeps, Answer, build_agent
 from open_data_assistant.mcp.schemas import DataResult
 from open_data_assistant.wds.client import BASE_URL, WdsClient
 from tests.fixtures.wds import load_wds_fixture
@@ -54,6 +54,18 @@ def _scripted_model(steps: list[Step]) -> FunctionModel:
         return ModelResponse(parts=[ToolCallPart(tool_name=tool_name, args=args)])
 
     return FunctionModel(respond)
+
+
+ONTARIO_LINK = (
+    "https://www150.statcan.gc.ca/t1/tbl1/en/sbv.action"
+    "?vectorNumbers=v2063949&searchOption=2&latestN=1"
+)
+ONTARIO_ANSWER_ARGS: dict[str, Any] = {
+    "text": "The unemployment rate in Ontario was 6.9% in August 2026 "
+    f"([Ontario, unemployment rate (v2063949)]({ONTARIO_LINK})).",
+    "values": [{"coordinate": "7.7.1.1.1.1.0.0.0.0", "ref_per": "2026-08-01", "value": 6.9}],
+}
+ONTARIO_ANSWER: Step = ("final_result_Answer", ONTARIO_ANSWER_ARGS)
 
 
 def _deps() -> AgentDeps:
@@ -111,16 +123,23 @@ def test_multi_turn_conversation_threads_history(httpx_mock: HTTPXMock) -> None:
                 "period": {"type": "latestN", "n": 1},
             },
         ),
-        "The unemployment rate in Ontario was 6.9% as of 2026-08, from table 14100287 "
-        "(status: normal).",
-        "That answer came from Statistics Canada table 14100287, reference period 2026-08.",
+        ONTARIO_ANSWER,
+        (
+            "final_result_Answer",
+            {
+                "text": "That 6.9% for August 2026 came from Statistics Canada table 14100287 "
+                f"([v2063949]({ONTARIO_LINK})).",
+                "values": ONTARIO_ANSWER_ARGS["values"],
+            },
+        ),
     ]
     agent = build_agent(_scripted_model(steps))
     deps = _deps()
 
     with deps.wds_client:
         result1 = agent.run_sync("What's the unemployment rate in Ontario?", deps=deps)
-        assert result1.output == steps[2]
+        assert isinstance(result1.output, Answer)
+        assert result1.output.values[0].value == 6.9
 
         # Turn 2 shares history - if it weren't threaded through, the step index would
         # reset to 0 and this would try to call get_table_structure again, which would
@@ -129,7 +148,10 @@ def test_multi_turn_conversation_threads_history(httpx_mock: HTTPXMock) -> None:
             "Which table was that from?", message_history=result1.all_messages(), deps=deps
         )
 
-    assert result2.output == steps[3]
+    # Turn 2 states a value without calling get_data again - allowed, because the validator
+    # checks against data fetched anywhere in the conversation, not just this run.
+    assert isinstance(result2.output, Answer)
+    assert "14100287" in result2.output.text
 
 
 def test_invalid_tool_args_trigger_a_retry_not_a_crash(httpx_mock: HTTPXMock) -> None:
@@ -150,7 +172,7 @@ def test_invalid_tool_args_trigger_a_retry_not_a_crash(httpx_mock: HTTPXMock) ->
                 "period": {"type": "latestN", "n": 1},
             },
         ),
-        "The unemployment rate in Ontario was 6.9%.",
+        ONTARIO_ANSWER,
     ]
     agent = build_agent(_scripted_model(steps))
     deps = _deps()
@@ -158,7 +180,7 @@ def test_invalid_tool_args_trigger_a_retry_not_a_crash(httpx_mock: HTTPXMock) ->
     with deps.wds_client:
         result = agent.run_sync("What's the unemployment rate in Ontario?", deps=deps)
 
-    assert result.output == steps[2]
+    assert isinstance(result.output, Answer)
     retries = [
         p
         for m in result.all_messages()
@@ -201,7 +223,7 @@ def test_business_rule_error_triggers_a_retry_not_a_crash(httpx_mock: HTTPXMock)
                 "period": {"type": "latestN", "n": 1},
             },
         ),
-        "The unemployment rate in Ontario was 6.9%.",
+        ONTARIO_ANSWER,
     ]
     agent = build_agent(_scripted_model(steps))
     deps = _deps()
@@ -209,7 +231,7 @@ def test_business_rule_error_triggers_a_retry_not_a_crash(httpx_mock: HTTPXMock)
     with deps.wds_client:
         result = agent.run_sync("What's the unemployment rate in Ontario?", deps=deps)
 
-    assert result.output == steps[2]
+    assert isinstance(result.output, Answer)
     retries = [
         p
         for m in result.all_messages()
@@ -242,8 +264,7 @@ def test_end_to_end_normal_question(httpx_mock: HTTPXMock) -> None:
                 "period": {"type": "latestN", "n": 1},
             },
         ),
-        "The unemployment rate in Ontario was 6.9% as of 2026-08, from table 14100287 "
-        "(status: normal).",
+        ONTARIO_ANSWER,
     ]
     agent = build_agent(_scripted_model(steps))
     deps = _deps()
@@ -279,7 +300,21 @@ def test_end_to_end_scalar_factor_question(httpx_mock: HTTPXMock) -> None:
                 "period": {"type": "latestN", "n": 1},
             },
         ),
-        "Canada's GDP was approximately $3.44 trillion in Q2 2026, from table 36100104.",
+        (
+            "final_result_Answer",
+            {
+                "text": "Canada's GDP was about $3.44 trillion in Q2 2026 "
+                "([GDP at market prices (v62305783)](https://www150.statcan.gc.ca/t1/tbl1/en/"
+                "sbv.action?vectorNumbers=v62305783&searchOption=2&latestN=1)).",
+                "values": [
+                    {
+                        "coordinate": "1.2.1.30.0.0.0.0.0.0",
+                        "ref_per": "2026-04-01",
+                        "value": 3437720.0 * 10**6,
+                    }
+                ],
+            },
+        ),
     ]
     agent = build_agent(_scripted_model(steps))
     deps = _deps()
@@ -311,7 +346,22 @@ def test_end_to_end_census_question_has_no_vector_id(httpx_mock: HTTPXMock) -> N
                 "period": {"type": "latestN", "n": 1},
             },
         ),
-        "Ontario's population in the 2021 Census was 14,223,942, from table 98100001.",
+        (
+            "final_result_Answer",
+            {
+                # A Census series has no series_url, so the table link is the citation.
+                "text": "Ontario's population in the 2021 Census was 14,223,942 "
+                "([table 98100001](https://www150.statcan.gc.ca/t1/tbl1/en/tv.action"
+                "?pid=9810000101)).",
+                "values": [
+                    {
+                        "coordinate": "7.1.0.0.0.0.0.0.0.0",
+                        "ref_per": "2021-01-01",
+                        "value": 14223942,
+                    }
+                ],
+            },
+        ),
     ]
     agent = build_agent(_scripted_model(steps))
     deps = _deps()

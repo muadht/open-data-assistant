@@ -27,8 +27,8 @@ built yet), or **Open**.
 
 ## The agent loop
 
-**Decided:** Pydantic AI tool loop (`build_agent()` in `agent/agent.py`).
-**Proposed:** typed outcomes, output validation, limits.
+**Decided:** Pydantic AI tool loop (`build_agent()` in `agent/agent.py`), typed outcomes
+(`agent/outcomes.py`), output validation (`agent/validator.py`), and limits (#48).
 
 ```mermaid
 flowchart TD
@@ -57,7 +57,7 @@ flowchart TD
     ERR --> RESP
 ```
 
-### Typed outcomes (Proposed)
+### Typed outcomes (Decided)
 
 The agent's `output_type` is a union, so every run ends in one of three explicit states rather
 than free text:
@@ -68,7 +68,7 @@ than free text:
 | `Clarification` | the question to ask, candidate tables/members to choose from | 4 |
 | `Unanswerable` | the reason, and the nearest thing that *can* be answered, if any | 6 |
 
-### Output validator (Proposed)
+### Output validator (Decided)
 
 Runs on every `Answer` before it's returned. On failure it raises `ModelRetry` with the
 specific problem (e.g. "169.4 does not appear in any fetched data"), within a small retry
@@ -81,15 +81,24 @@ budget (2); after that the run fails visibly rather than returning an unchecked 
 | Reference period stated | 2 |
 | Non-normal status / symbol on a used data point is mentioned | 3 |
 
-### Limits and errors (Proposed)
+How the checks read the answer: `Answer.values` lists every number stated, each traced to a
+coordinate and reference period, and those are what's checked against fetched data - numbers in
+the free text aren't scanned (revisit if #10's evals show numbers slipping past). The reference
+period check is that each used period's year appears in the text (the full date is too fragile:
+"August 2026" vs. `2026-08-01`). A flag check requires the flag's description verbatim, as the
+model saw it in the tool result (e.g. "too unreliable to be published"). Guidance on *when* to
+return each outcome lives in the outcome models' descriptions, not the system prompt, because the
+MCP server sends that prompt to clients that have no output types.
+
+### Limits and errors (Decided)
 
 | Situation | Behaviour |
 |---|---|
 | Bad tool arguments (`ValueError` in a tool) | `ModelRetry`: the model sees the error and corrects itself (**Decided**, `agent/tools.py`) |
 | WDS maintenance window (409) / outage (`WdsError`) | Stop; tell the user when to retry. No model retry. (**Decided**, propagates from `agent/tools.py`) |
-| Too many steps | `UsageLimits` cap on requests/tool calls (~12; a typical question needs 4-6) |
-| Too slow | Overall run timeout, in line with the latency target |
-| Validator keeps failing | Stop after the retry budget; show an error, not the unchecked answer |
+| Too many steps | `DEFAULT_USAGE_LIMITS`: 12 requests / 12 tool calls per run (a typical question needs 4-6), passed to `run()` by the caller; tune from #10's data |
+| Too slow | `DEFAULT_RUN_TIMEOUT_SECONDS` (30s), applied by the caller around `run()` - Pydantic AI has no run-level timeout |
+| Validator keeps failing | After 2 retries the run raises `UnexpectedModelBehavior`; the caller shows an error, never the unchecked answer |
 
 ### Progress events (Proposed)
 
