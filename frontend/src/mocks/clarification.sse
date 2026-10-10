@@ -1,0 +1,12 @@
+event: session
+data: {"session_id": "mock-session", "message_id": "m1"}
+
+event: tool_call
+data: {"call_id": "c1", "label": "Searching StatCan tables"}
+
+event: tool_result
+data: {"call_id": "c1", "ok": true}
+
+event: clarification
+data: {"message_id": "m1", "question": "Several tables could answer that. Which measure of inflation do you mean?", "options": ["Consumer Price Index, monthly (all-items)", "Core inflation measures (Bank of Canada definitions)", "CPI, seasonally adjusted"]}
+

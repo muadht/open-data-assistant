@@ -1,0 +1,15 @@
+event: session
+data: {"session_id": "mock-session", "message_id": "m1"}
+
+event: tool_call
+data: {"call_id": "c1", "label": "Searching StatCan tables"}
+
+event: tool_result
+data: {"call_id": "c1", "ok": true}
+
+event: tool_call
+data: {"call_id": "c2", "label": "Reading the table's structure"}
+
+event: error
+data: {"message_id": "m1", "code": "wds_unavailable", "message": "Statistics Canada's data service is updating (midnight to 8:30 AM ET). Try again shortly.", "retryable": true}
+
