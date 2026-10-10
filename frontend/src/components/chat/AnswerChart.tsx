@@ -1,4 +1,12 @@
-import { AlertTriangle, Table2 } from 'lucide-react'
+import {
+  AlertTriangle,
+  ChartBarBig,
+  ChartLine,
+  Ellipsis,
+  Map as MapIcon,
+  Table2,
+  type LucideIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import {
   Bar,
@@ -23,7 +31,13 @@ import {
   type LineChartSpec,
 } from '@/chat/chartSpec'
 import type { DataResult } from '@/chat/events'
-import { cn } from '@/lib/utils'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ProvinceMap } from './ProvinceMap'
 
 const AXIS_TICK = { fill: 'var(--muted-foreground)', fontSize: 12 }
@@ -42,10 +56,10 @@ export function AnswerChart({ results }: { results: DataResult[] }) {
   )
 }
 
-const VIEW_LABELS: Record<ChartSpec['kind'], string> = {
-  line: 'Line',
-  map: 'Map',
-  bar: 'Bar',
+const VIEWS: Record<ChartSpec['kind'], { label: string; icon: LucideIcon }> = {
+  line: { label: 'Line chart', icon: ChartLine },
+  map: { label: 'Map', icon: MapIcon },
+  bar: { label: 'Bar chart', icon: ChartBarBig },
 }
 
 function ChartCard({ group }: { group: ChartGroup }) {
@@ -67,39 +81,44 @@ function ChartCard({ group }: { group: ChartGroup }) {
             </span>
           )}
         </span>
-        <span className="flex shrink-0 items-center gap-1">
-          {group.views.length > 1 && !asTable && (
-            <span
-              role="group"
-              aria-label="Chart type"
-              className="inline-flex rounded-md border p-0.5 text-xs"
-            >
-              {group.views.map((view, i) => (
-                <button
-                  key={view.kind}
-                  type="button"
-                  aria-pressed={i === viewIndex}
-                  onClick={() => setViewIndex(i)}
-                  className={cn(
-                    'rounded px-1.5 py-0.5 text-muted-foreground hover:text-foreground',
-                    i === viewIndex && 'bg-muted font-medium text-foreground',
-                  )}
-                >
-                  {VIEW_LABELS[view.kind]}
-                </button>
-              ))}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={() => setAsTable(!asTable)}
-            aria-pressed={asTable}
-            className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+        {/* Every way to view the data in one menu: the charts that fit, then the table,
+            which lists the data of the chart last shown. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="Chart view"
+            title="Change view"
+            className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground data-[state=open]:bg-muted"
           >
-            <Table2 className="size-3.5" aria-hidden />
-            {asTable ? 'Show chart' : 'Show as table'}
-          </button>
-        </span>
+            <Ellipsis className="size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuRadioGroup
+              value={asTable ? 'table' : String(viewIndex)}
+              onValueChange={(value) => {
+                if (value === 'table') {
+                  setAsTable(true)
+                } else {
+                  setAsTable(false)
+                  setViewIndex(Number(value))
+                }
+              }}
+            >
+              {group.views.map((view, i) => {
+                const { label, icon: Icon } = VIEWS[view.kind]
+                return (
+                  <DropdownMenuRadioItem key={view.kind} value={String(i)}>
+                    <Icon aria-hidden />
+                    {label}
+                  </DropdownMenuRadioItem>
+                )
+              })}
+              <DropdownMenuRadioItem value="table">
+                <Table2 aria-hidden />
+                Table
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </figcaption>
       {asTable ? (
         <ChartTable spec={spec} />
