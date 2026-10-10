@@ -93,7 +93,8 @@ A stream that closes without a terminal event was cut off; the frontend shows a 
   "values": [
     { "coordinate": "23.2.0.0.0.0.0.0.0.0", "ref_per": "2026-08-01", "value": 179.2 }
   ],
-  "data_results": [ { "…": "DataResult" } ]
+  "data_results": [ { "…": "DataResult" } ],
+  "related_tables": [ { "…": "TableCandidate" } ]
 }
 ```
 
@@ -101,6 +102,12 @@ A stream that closes without a terminal event was cut off; the frontend shows a 
 - `data_results` holds only the series the answer used (matched by `coordinate` from
   `values`), in the order first used. These are what the chart draws and the export
   contains, so they're never re-fetched.
+- `related_tables` (optional, may be absent or empty): up to 5 other tables that may interest
+  the user, as `TableCandidate`s ([mcp-tools-and-data-contract.md](mcp-tools-and-data-contract.md)).
+  They're the run's own `search_tables` results minus the tables the answer used, in search
+  rank order; if the run didn't search (common for follow-ups), they're the active tables
+  most similar to the one used, by catalogue embedding. Suggestions only: metadata, never
+  data, and not what the answer is based on. Built by `agent/related.py` (#54).
 
 `clarification`:
 

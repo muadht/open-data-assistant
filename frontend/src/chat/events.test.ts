@@ -35,6 +35,14 @@ const DATA_RESULT_FIELDS = [
   'retrieved_at',
 ]
 
+const TABLE_FIELDS = [
+  'product_id',
+  'title_en',
+  'frequency',
+  'date_range',
+  'is_active',
+]
+
 async function events(text: string) {
   const stream = new Response(text).body!
   const parsed: { type: string; data: Record<string, unknown> }[] = []
@@ -69,6 +77,12 @@ describe.each(Object.entries(mocks))('%s', (_name, text) => {
       for (const result of results) {
         for (const field of DATA_RESULT_FIELDS)
           expect(result).toHaveProperty(field)
+      }
+      for (const table of (data.related_tables ?? []) as Record<
+        string,
+        unknown
+      >[]) {
+        for (const field of TABLE_FIELDS) expect(table).toHaveProperty(field)
       }
       const coordinates = results.map((r) => r.coordinate)
       for (const value of data.values as { coordinate: string }[]) {

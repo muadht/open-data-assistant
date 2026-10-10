@@ -95,3 +95,34 @@ def hybrid_search(
     return [
         SearchHit(doc_id=doc_id, score=score, source=sources[doc_id]) for doc_id, score in ranked
     ]
+
+
+def similar_search(
+    client: SearchClient,
+    index_name: str,
+    doc_id: str,
+    k: int,
+    filters: list[dict[str, Any]],
+) -> list[SearchHit]:
+    """Nearest neighbours of an already-indexed document, by the embedding stored with it -
+    "tables like this one", with no query text to embed. Excludes the document itself."""
+    response = client.search(
+        index=index_name,
+        body={"size": 1, "query": {"ids": {"values": [doc_id]}}, "_source": ["embedding"]},
+    )
+    hits = response["hits"]["hits"]
+    if not hits or "embedding" not in hits[0]["_source"]:
+        return []
+
+    knn: dict[str, Any] = {"vector": hits[0]["_source"]["embedding"], "k": k + 1}
+    if filters:
+        knn["filter"] = {"bool": {"filter": filters}}
+    response = client.search(
+        index=index_name,
+        body={
+            "size": k + 1,
+            "query": {"knn": {"embedding": knn}},
+            "_source": {"excludes": ["embedding"]},
+        },
+    )
+    return [hit for hit in _hits(response) if hit.doc_id != doc_id][:k]

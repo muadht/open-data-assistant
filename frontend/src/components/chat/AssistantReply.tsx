@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/message'
 import { AnswerChart } from './AnswerChart'
 import { AnswerSources } from './AnswerSources'
+import { RelatedTables } from './RelatedTables'
 import { Steps } from './Steps'
 
 // Answer links point to StatCan pages; open them without losing the conversation.
@@ -55,6 +56,7 @@ export function AssistantReply({ message, active, onSend, onRetry }: Props) {
           <AnswerChart results={outcome.answer.data_results} />
           <AnswerSources answer={outcome.answer} />
           <AnswerActions text={outcome.answer.text} />
+          <RelatedTables tables={outcome.answer.related_tables ?? []} />
         </>
       )}
 
