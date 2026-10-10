@@ -1,3 +1,4 @@
+import { ChartSpline } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // The product's own identity. Deliberately not the Government of Canada signature or the
@@ -8,21 +9,14 @@ import { cn } from '@/lib/utils'
 
 export const PRODUCT_NAME = 'Open Data Assistant'
 
-/** A neutral mark: three rising bars, in the app's navy. */
+/** A neutral mark: Lucide's line chart, in the primary colour (navy, pale navy in dark mode). */
 export function Logo({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
+    <ChartSpline
       aria-hidden
-      className={cn('size-7 shrink-0', className)}
-    >
-      <rect width="24" height="24" rx="6" className="fill-primary" />
-      <g className="fill-primary-foreground">
-        <rect x="6" y="13" width="3" height="5" rx="1" />
-        <rect x="10.5" y="9.5" width="3" height="8.5" rx="1" />
-        <rect x="15" y="6" width="3" height="12" rx="1" />
-      </g>
-    </svg>
+      strokeWidth={2.25}
+      className={cn('size-6 shrink-0 text-primary', className)}
+    />
   )
 }
 
