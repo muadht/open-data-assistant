@@ -32,7 +32,7 @@ def test_normal_latest_n_fetch(httpx_mock: HTTPXMock) -> None:
 
     selections = {1: 7, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
     with WdsClient() as client:
-        result = get_data(client, 14100287, selections, LatestNPeriod(n=1))
+        [result] = get_data(client, 14100287, selections, LatestNPeriod(n=1))
 
     assert result.product_id == 14100287
     assert (
@@ -90,7 +90,7 @@ def test_range_fetch_requires_a_vector_id(httpx_mock: HTTPXMock) -> None:
     selections = {1: 7, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
     period = RangePeriod(start="2019-01-01", end="2024-01-01")
     with WdsClient() as client:
-        result = get_data(client, 14100287, selections, period)
+        [result] = get_data(client, 14100287, selections, period)
 
     assert len(result.series) == 61
     assert result.series[0].ref_per == "2019-01-01"
@@ -110,7 +110,7 @@ def test_census_table_latest_n_fetch_has_no_vector_id(httpx_mock: HTTPXMock) -> 
 
     selections = {1: 7, 2: 1}
     with WdsClient() as client:
-        result = get_data(client, 98100001, selections, LatestNPeriod(n=1))
+        [result] = get_data(client, 98100001, selections, LatestNPeriod(n=1))
 
     assert result.vector_id is None
     assert result.series_url is None
@@ -132,7 +132,7 @@ def test_footnotes_are_only_those_for_the_table_its_dimensions_and_the_selected_
 
     selections = {1: 7, 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
     with WdsClient() as client:
-        result = get_data(client, 14100287, selections, LatestNPeriod(n=1))
+        [result] = get_data(client, 14100287, selections, LatestNPeriod(n=1))
 
     assert len(result.footnotes) == 7
     assert any(f.startswith("The unemployment rate is the number") for f in result.footnotes)
@@ -151,7 +151,7 @@ def test_census_footnotes_are_deduplicated_and_stripped_of_html(httpx_mock: HTTP
 
     selections = {1: 7, 2: 1}
     with WdsClient() as client:
-        result = get_data(client, 98100001, selections, LatestNPeriod(n=1))
+        [result] = get_data(client, 98100001, selections, LatestNPeriod(n=1))
 
     assert result.members == {
         "Geographic name": "Ontario",
@@ -192,7 +192,7 @@ def test_scalar_factor_is_applied(httpx_mock: HTTPXMock) -> None:
 
     selections = {1: 1, 2: 2, 3: 1, 4: 30}
     with WdsClient() as client:
-        result = get_data(client, 36100104, selections, LatestNPeriod(n=1))
+        [result] = get_data(client, 36100104, selections, LatestNPeriod(n=1))
 
     point = result.series[0]
     assert point.ref_per == "2026-04-01"
@@ -211,9 +211,43 @@ def test_suppressed_value_is_kept_in_series_with_a_null_value(httpx_mock: HTTPXM
 
     selections = {1: 1, 2: 1, 3: 1, 4: 1}
     with WdsClient() as client:
-        result = get_data(client, 13100778, selections, LatestNPeriod(n=1))
+        [result] = get_data(client, 13100778, selections, LatestNPeriod(n=1))
 
     assert len(result.series) == 1
     point = result.series[0]
     assert point.value is None
     assert point.status == "too unreliable to be published"
+
+
+def test_several_members_are_fetched_in_one_batched_request(httpx_mock: HTTPXMock) -> None:
+    """Alberta and Ontario in one call: one series lookup and one data request, results in
+    the order requested even though WDS returns the data in the opposite order."""
+    _mock(httpx_mock, "POST", "getCubeMetadata", "cube_metadata")
+    _mock(httpx_mock, "POST", "getSeriesInfoFromCubePidCoord", "batched_series_info")
+    _mock(httpx_mock, "POST", "getDataFromVectorsAndLatestNPeriods", "batched_data_point")
+    _mock(httpx_mock, "GET", "getCodeSets", "code_sets")
+
+    selections: dict[int, int | list[int]] = {1: [10, 7], 2: 7, 3: 1, 4: 1, 5: 1, 6: 1}
+    with WdsClient() as client:
+        alberta, ontario = get_data(client, 14100287, selections, LatestNPeriod(n=1))
+
+    assert alberta.members["Geography"] == "Alberta"
+    assert alberta.coordinate == "10.7.1.1.1.1.0.0.0.0"
+    assert alberta.vector_id == 2064516
+    assert alberta.series[0].value == 6.4
+    assert ontario.members["Geography"] == "Ontario"
+    assert ontario.vector_id == 2063949
+    assert ontario.series[0].value == 7.0
+    assert len(httpx_mock.get_requests()) == 4
+
+
+def test_only_one_dimension_may_list_several_members(httpx_mock: HTTPXMock) -> None:
+    selections: dict[int, int | list[int]] = {1: [10, 7], 2: [7, 8], 3: 1, 4: 1, 5: 1, 6: 1}
+    with WdsClient() as client, pytest.raises(ValueError, match="Only one dimension"):
+        get_data(client, 14100287, selections, LatestNPeriod(n=1))
+
+
+def test_too_many_members_is_rejected_before_calling_wds(httpx_mock: HTTPXMock) -> None:
+    selections: dict[int, int | list[int]] = {1: list(range(1, 22)), 2: 7}
+    with WdsClient() as client, pytest.raises(ValueError, match="at most 20 series"):
+        get_data(client, 14100287, selections, LatestNPeriod(n=1))

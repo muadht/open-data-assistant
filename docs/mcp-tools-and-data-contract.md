@@ -69,16 +69,17 @@ MemberCandidate {
 }
 ```
 
-### `get_data(productId, selections, period) -> DataResult`
+### `get_data(productId, selections, period) -> DataResult[]`
 
 The only tool that fetches actual data. Takes resolved member selections (one member ID per dimension, or a default), builds the 10-part coordinate internally, decides whether to route through vector ID or coordinate based fetch, and returns the standard data shape below. The LLM never sees or constructs a coordinate string.
 
-- `selections`: `{ dimensionPositionId: memberId }` for every dimension of the table (the server fills in defaults for unspecified dimensions where the table defines one).
+- `selections`: `{ dimensionPositionId: memberId }` for every dimension of the table (the server fills in defaults for unspecified dimensions where the table defines one). **One** dimension may map to a list of member IDs (at most 20) instead, to fetch one series per member in a single call: e.g. every province for "population by province", or Ontario and Alberta for a comparison. Returns one `DataResult` per series, in the order the members were listed.
+- Several series are fetched with **one batched WDS request per endpoint**, not one call each: WDS's series-lookup and data endpoints all take a list. WDS doesn't return batched items in request order (live-verified 2026-10-09), so results are matched back by coordinate.
 - `period`: either `{ type: "latestN", n: <int> }` or `{ type: "range", start, end }`. Range queries are only possible via vector ID — if the resolved series has no vector ID (e.g. a census table), the server rejects a range request with a clear error rather than silently returning the wrong thing.
 
 Internally, `get_data`:
-1. Builds the coordinate from `selections`.
-2. Looks up the vector ID via `getSeriesInfoFromCubePidCoord` if available.
+1. Builds one coordinate per requested series from `selections`.
+2. Looks up the vector IDs via one batched `getSeriesInfoFromCubePidCoord` call.
 3. Calls the appropriate WDS endpoint (`getDataFromVectorsAndLatestNPeriods`, `getDataFromVectorByReferencePeriodRange`, or `getDataFromCubePidCoordAndLatestNPeriods`).
 4. Applies the scalar factor to every value (WDS decimals are pre-applied; the ×10^scalar is not).
 5. Checks per-item SUCCESS/FAILED status and `vectorId: 0` (a formally "successful" but nonexistent series) and surfaces that as a clear "no data for this combination" rather than an empty chart.

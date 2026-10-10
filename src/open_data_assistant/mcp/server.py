@@ -77,7 +77,9 @@ def build_server(
         )
 
     @server.tool(description=agent_tools.get_data.__doc__)
-    def get_data(product_id: int, selections: dict[int, int], period: Period) -> DataResult:
+    def get_data(
+        product_id: int, selections: dict[int, int | list[int]], period: Period
+    ) -> list[DataResult]:
         return _as_tool_error(lambda: _get_data(wds_client, product_id, selections, period))
 
     return server

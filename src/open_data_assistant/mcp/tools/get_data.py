@@ -1,9 +1,10 @@
 """The `get_data` MCP tool.
 
-The only tool that fetches actual data. Builds the 10-slot coordinate from `selections`,
-resolves (or fails to resolve) a vector ID via `getSeriesInfoFromCubePidCoord`, routes to the
-correct WDS data endpoint, applies the scalar factor, and decodes quality flags into the
-standard `DataResult` shape. See docs/mcp-tools-and-data-contract.md's `get_data` section and
+The only tool that fetches actual data. Builds a 10-slot coordinate per requested series from
+`selections` (one dimension may list several members), resolves vector IDs via
+`getSeriesInfoFromCubePidCoord`, routes to the correct WDS data endpoint - batching all series
+into one request per endpoint - applies the scalar factor, and decodes quality flags into one
+standard `DataResult` per series. See docs/mcp-tools-and-data-contract.md's `get_data` section and
 "WDS quirks" for why each step here exists.
 """
 
@@ -11,6 +12,7 @@ from __future__ import annotations
 
 import html
 import re
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
@@ -19,11 +21,19 @@ from pydantic import HttpUrl
 from ...wds.client import WdsClient
 from ..schemas import DataPoint, DataResult, LatestNPeriod, Period, RangePeriod
 
+# Enough for every province and territory plus Canada; this is a targeted-query tool, not a
+# table dump (see docs/mvp-scope.md's out-of-scope list).
+MAX_SERIES_PER_CALL = 20
+
 
 def get_data(
-    client: WdsClient, product_id: int, selections: dict[int, int], period: Period
-) -> DataResult:
-    coordinate = _build_coordinate(selections)
+    client: WdsClient,
+    product_id: int,
+    selections: Mapping[int, int | list[int]],
+    period: Period,
+) -> list[DataResult]:
+    expanded = _expand_selections(selections)
+    coordinates = [_build_coordinate(s) for s in expanded]
     is_census = str(product_id).startswith("9810")
 
     [cube_item] = client.get_cube_metadata([product_id])
@@ -31,61 +41,105 @@ def get_data(
         raise ValueError(f"getCubeMetadata failed for product {product_id}: {cube_item}")
     cube = cube_item["object"]
 
-    [series_item] = client.get_series_info_from_cube_pid_coord([(product_id, coordinate)])
-    if series_item["status"] != "SUCCESS":
-        raise ValueError(
-            f"getSeriesInfoFromCubePidCoord failed for {product_id}/{coordinate}: {series_item}"
-        )
-    series = series_item["object"]
-    if not series["SeriesTitleEn"]:
-        raise ValueError(
-            f"No series exists for product {product_id} at coordinate {coordinate} - check "
-            "that `selections` names a real member for every dimension of this table."
-        )
+    series_by_coordinate = _by_coordinate(
+        client.get_series_info_from_cube_pid_coord([(product_id, c) for c in coordinates]),
+        f"getSeriesInfoFromCubePidCoord for product {product_id}",
+    )
+    for coordinate in coordinates:
+        if not series_by_coordinate[coordinate]["SeriesTitleEn"]:
+            raise ValueError(
+                f"No series exists for product {product_id} at coordinate {coordinate} - check "
+                "that `selections` names a real member for every dimension of this table."
+            )
 
     # WDS's vectorId: 0 sentinel means "no vector for this series" (always true for Census
     # tables, see docs/mcp-tools-and-data-contract.md) - normalized to None everywhere below.
-    vector_id: int | None = series["vectorId"] or None
+    vector_ids: dict[str, int | None] = {
+        c: series_by_coordinate[c]["vectorId"] or None for c in coordinates
+    }
+    with_vector = {c: v for c in coordinates if (v := vector_ids[c]) is not None}
+    without_vector = [c for c in coordinates if vector_ids[c] is None]
 
+    items: list[dict[str, Any]] = []
     if isinstance(period, RangePeriod):
-        if vector_id is None:
-            reason = "a Census table has no vector IDs" if is_census else "this series has none"
+        if without_vector:
+            reason = "a Census table has no vector IDs" if is_census else "these series have none"
             raise ValueError(
-                f"Cannot fetch a date range for product {product_id} at coordinate "
-                f"{coordinate}: {reason}. Only a latestN query is possible here."
+                f"Cannot fetch a date range for product {product_id} at coordinate(s) "
+                f"{', '.join(without_vector)}: {reason}. Only a latestN query is possible here."
             )
-        [item] = client.get_data_from_vector_by_reference_period_range(
-            [vector_id], start_ref_period=period.start, end_reference_period=period.end
+        items = client.get_data_from_vector_by_reference_period_range(
+            list(with_vector.values()),
+            start_ref_period=period.start,
+            end_reference_period=period.end,
         )
     else:
         assert isinstance(period, LatestNPeriod)
-        if vector_id is not None:
-            [item] = client.get_data_from_vectors_and_latest_n_periods([(vector_id, period.n)])
-        else:
-            [item] = client.get_data_from_cube_pid_coord_and_latest_n_periods(
-                [(product_id, coordinate, period.n)]
+        if with_vector:
+            items += client.get_data_from_vectors_and_latest_n_periods(
+                [(vector_id, period.n) for vector_id in with_vector.values()]
             )
-
-    if item["status"] != "SUCCESS":
-        raise ValueError(f"WDS data fetch failed for {product_id}/{coordinate}: {item}")
-    obj = item["object"]
+        if without_vector:
+            items += client.get_data_from_cube_pid_coord_and_latest_n_periods(
+                [(product_id, c, period.n) for c in without_vector]
+            )
+    data_by_coordinate = _by_coordinate(items, f"WDS data fetch for product {product_id}")
 
     code_sets = client.get_code_sets()
-    data_points = [_to_data_point(p, series, code_sets) for p in obj["vectorDataPoint"]]
+    retrieved_at = datetime.now(UTC)
+    return [
+        DataResult(
+            product_id=product_id,
+            title_en=cube["cubeTitleEn"],
+            series_title_en=series_by_coordinate[coordinate]["SeriesTitleEn"],
+            members=_selected_members(cube, chosen),
+            footnotes=_applicable_footnotes(cube, chosen),
+            coordinate=coordinate,
+            vector_id=vector_ids[coordinate],
+            series=[
+                _to_data_point(p, series_by_coordinate[coordinate], code_sets)
+                for p in data_by_coordinate[coordinate]["vectorDataPoint"]
+            ],
+            source_url=HttpUrl(
+                f"https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid={product_id}01"
+            ),
+            series_url=_series_url(vector_ids[coordinate], period),
+            retrieved_at=retrieved_at,
+        )
+        for coordinate, chosen in zip(coordinates, expanded, strict=True)
+    ]
 
-    return DataResult(
-        product_id=product_id,
-        title_en=cube["cubeTitleEn"],
-        series_title_en=series["SeriesTitleEn"],
-        members=_selected_members(cube, selections),
-        footnotes=_applicable_footnotes(cube, selections),
-        coordinate=coordinate,
-        vector_id=vector_id,
-        series=data_points,
-        source_url=HttpUrl(f"https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid={product_id}01"),
-        series_url=_series_url(vector_id, period),
-        retrieved_at=datetime.now(UTC),
-    )
+
+def _expand_selections(selections: Mapping[int, int | list[int]]) -> list[dict[int, int]]:
+    fixed = {p: m for p, m in selections.items() if isinstance(m, int)}
+    listed = {p: m for p, m in selections.items() if isinstance(m, list)}
+    if not listed:
+        return [fixed]
+    if len(listed) > 1:
+        raise ValueError(
+            "Only one dimension can list several members per get_data call; got lists for "
+            f"dimensions {sorted(listed)}. Make one call per combination instead."
+        )
+    [(position, member_ids)] = listed.items()
+    unique_ids = list(dict.fromkeys(member_ids))
+    if not unique_ids:
+        raise ValueError(f"Dimension {position} lists no members.")
+    if len(unique_ids) > MAX_SERIES_PER_CALL:
+        raise ValueError(
+            f"Dimension {position} lists {len(unique_ids)} members; get_data returns at most "
+            f"{MAX_SERIES_PER_CALL} series per call. For a whole table, point the user to "
+            "StatCan's full-table CSV download instead."
+        )
+    return [{**fixed, position: member_id} for member_id in unique_ids]
+
+
+def _by_coordinate(items: list[dict[str, Any]], what: str) -> dict[str, dict[str, Any]]:
+    # WDS doesn't return batched items in request order (live-verified 2026-10-09), so
+    # results are matched back by coordinate, which every SUCCESS item carries.
+    failed = [item for item in items if item["status"] != "SUCCESS"]
+    if failed:
+        raise ValueError(f"{what} failed: {failed}")
+    return {item["object"]["coordinate"]: item["object"] for item in items}
 
 
 def _series_url(vector_id: int | None, period: Period) -> HttpUrl | None:

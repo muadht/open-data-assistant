@@ -75,14 +75,17 @@ def find_members(
 def get_data(
     ctx: RunContext[AgentDeps],
     product_id: int,
-    selections: dict[int, int],
+    selections: dict[int, int | list[int]],
     period: Period,
-) -> DataResult:
+) -> list[DataResult]:
     """Fetch actual data. `selections` maps each dimension's dimensionPositionId to a
-    resolved memberId (from find_members or get_table_structure); `period` is either
-    {"type": "latestN", "n": <int>} or {"type": "range", "start": ..., "end": ...} (range
-    queries require the resolved series to have a vector ID - no vector means no vector,
-    which get_data will report as an error rather than approximating).
+    resolved memberId (from find_members or get_table_structure). One dimension may instead
+    map to a list of memberIds (at most 20) to fetch several series in one call - e.g. every
+    province for "population by province", or Ontario and Alberta for a comparison. Returns
+    one DataResult per series. `period` is either {"type": "latestN", "n": <int>} or
+    {"type": "range", "start": ..., "end": ...} (range queries require every resolved series
+    to have a vector ID - no vector means no vector, which get_data will report as an error
+    rather than approximating).
 
     This is the only tool that returns real values - never state a number in your answer
     without having called this.
