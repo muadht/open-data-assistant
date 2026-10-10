@@ -10,9 +10,11 @@ This leads to a small, ordered tool set: search for a table, inspect its structu
 
 ## Tools
 
-### `search_tables(query, filters?) -> TableCandidate[]`
+### `search_tables(query, filters?) -> { candidates: TableCandidate[], top_structure: TableStructure | null }`
 
 Searches the catalogue index (built by this repo's `catalogue/` and `search/` packages — see Index design below) for tables matching a natural-language query. Ranking is hybrid: BM25 lexical + embedding (kNN) similarity, fused with reciprocal rank fusion (RRF).
+
+The result also carries **`top_structure`: the first candidate's structure, exactly as `get_table_structure` returns it** (#90). In measured runs the model spent a whole turn (1.5–2.5 s) calling `get_table_structure` on the table it had just found, and the top candidate is usually the one it picks, so it can now go straight to `get_data`. It costs one cached `getCubeMetadata`. If WDS can't describe the table (maintenance window, unreachable), or takes more than 2 s to (a cold `getCubeMetadata` sometimes takes 10 s or more: 36100104 took 12.3 s live), `top_structure` is null and the search still succeeds; a slow fetch carries on in the background and fills the metadata cache for the next call. Implemented by `search_tables_with_structure`, used by both the agent and the MCP server; the plain `search_tables` function (candidates only) remains for internal use.
 
 Before ranking, the query string goes through a deliberately crude regex extraction pass (`open_data_assistant.search.query.parse_query`): an 8-digit productId or a `###-####` CANSIM id is pulled out as an **exact-match** short-circuit (skips ranking entirely), a 4-digit year or year range becomes a `coverage` overlap filter, and an unambiguous frequency word (daily/weekly/monthly/quarterly/annual) becomes a `frequency` filter. Whatever remains of the query text is what actually hits BM25 and the embedding model — this exists because leaving years in the lexical text was observed to cause false matches (e.g. "2010" in a query matching a table titled "...applied for patents in 2010"). `search_tables`'s `filters` parameter is applied **in addition to** this auto-extraction, not instead of it — the MCP tool should not re-implement year/frequency parsing.
 

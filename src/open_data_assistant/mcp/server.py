@@ -27,12 +27,12 @@ from ..search.embeddings import EmbeddingProvider, SentenceTransformerEmbedder
 from ..search.hybrid import SearchClient
 from ..search.pipeline import make_client
 from ..wds.client import WdsClient, WdsError
-from .schemas import DataResult, MemberCandidate, Period, TableCandidate, TableSearchFilters
+from .schemas import DataResult, MemberCandidate, Period, TableSearchFilters, TableSearchResult
 from .schemas import TableStructure as TableStructureModel
 from .tools.find_members import find_members as _find_members
 from .tools.get_data import get_data as _get_data
 from .tools.get_table_structure import get_table_structure as _get_table_structure
-from .tools.search_tables import search_tables as _search_tables
+from .tools.search_tables import search_tables_with_structure
 
 
 def _as_tool_error[T](call: Callable[[], T]) -> T:
@@ -53,10 +53,12 @@ def build_server(
     @server.tool(description=agent_tools.search_tables.__doc__)
     def search_tables(
         query: str, filters: TableSearchFilters | None = None, k: int = 10
-    ) -> list[TableCandidate]:
+    ) -> TableSearchResult:
         try:
             return _as_tool_error(
-                lambda: _search_tables(search_client, search_index, embedder, query, filters, k=k)
+                lambda: search_tables_with_structure(
+                    search_client, search_index, embedder, wds_client, query, filters, k=k
+                )
             )
         except OpenSearchConnectionError as exc:
             raise ToolError(

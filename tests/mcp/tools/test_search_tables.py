@@ -6,10 +6,19 @@ candidate-mapping logic against a fake client and a fake embedder.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
+import httpx
+from pytest_httpx import HTTPXMock
+
 from open_data_assistant.mcp.schemas import TableSearchFilters
-from open_data_assistant.mcp.tools.search_tables import search_tables
+from open_data_assistant.mcp.tools.search_tables import (
+    search_tables,
+    search_tables_with_structure,
+)
+from open_data_assistant.wds.client import BASE_URL, WdsClient
+from tests.fixtures.wds import load_wds_fixture
 
 
 class FakeOpenSearchClient:
@@ -162,3 +171,91 @@ def test_table_candidate_maps_subjects_and_date_range():
     assert candidate.subjects == ["Labour"]
     assert candidate.date_range.start == "1976-01-01"
     assert candidate.date_range.end == "2026-08-01"
+
+
+# ------------------------------------------------------- search_tables_with_structure (#90)
+
+
+def _mock_wds(httpx_mock: HTTPXMock, metadata: str = "cube_metadata") -> None:
+    for method, path, fixture in (
+        ("POST", "getCubeMetadata", metadata),
+        ("GET", "getCodeSets", "code_sets"),
+    ):
+        body = load_wds_fixture(fixture)
+        httpx_mock.add_response(method=method, url=f"{BASE_URL}/{path}", json=body["body"])
+
+
+def test_the_top_candidate_comes_with_its_structure(httpx_mock: HTTPXMock) -> None:
+    """Only the first candidate's: the model usually picks it, and can go straight to
+    get_data instead of spending a turn on get_table_structure."""
+    _mock_wds(httpx_mock)
+    client = FakeOpenSearchClient([_response(("14100287", 10.0, _source("14100287")))])
+
+    with WdsClient() as wds:
+        result = search_tables_with_structure(
+            client, "statcan-products", FakeEmbedder(), wds, "14100287"
+        )
+
+    assert [c.product_id for c in result.candidates] == [14100287]
+    assert result.top_structure is not None
+    assert result.top_structure.product_id == 14100287
+    assert result.top_structure.dimensions[0].name_en == "Geography"
+    assert [r.url.path.rsplit("/", 1)[-1] for r in httpx_mock.get_requests()] == [
+        "getCubeMetadata",
+        "getCodeSets",
+    ]
+
+
+def test_search_still_works_when_wds_cannot_describe_the_table(httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(
+        method="POST", url=f"{BASE_URL}/getCubeMetadata", status_code=409, json={}
+    )
+    client = FakeOpenSearchClient([_response(("14100287", 10.0, _source("14100287")))])
+
+    with WdsClient() as wds:
+        result = search_tables_with_structure(
+            client, "statcan-products", FakeEmbedder(), wds, "14100287"
+        )
+
+    assert [c.product_id for c in result.candidates] == [14100287]
+    assert result.top_structure is None
+
+
+def test_no_candidates_means_no_structure_and_no_wds_call(httpx_mock: HTTPXMock) -> None:
+    client = FakeOpenSearchClient([_response(), _response()])
+
+    with WdsClient() as wds:
+        result = search_tables_with_structure(
+            client, "statcan-products", FakeEmbedder(), wds, "nothing like this"
+        )
+
+    assert result.candidates == []
+    assert result.top_structure is None
+    assert httpx_mock.get_requests() == []
+
+
+def test_a_slow_structure_is_left_out_rather_than_waited_for(httpx_mock: HTTPXMock) -> None:
+    """A cold getCubeMetadata can take 10 s or more; search doesn't wait that long."""
+
+    def slow_metadata(request: httpx.Request) -> httpx.Response:
+        time.sleep(0.5)
+        return httpx.Response(200, json=load_wds_fixture("cube_metadata")["body"])
+
+    httpx_mock.add_callback(slow_metadata, method="POST", url=f"{BASE_URL}/getCubeMetadata")
+    httpx_mock.add_response(
+        method="GET", url=f"{BASE_URL}/getCodeSets", json=load_wds_fixture("code_sets")["body"]
+    )
+    client = FakeOpenSearchClient([_response(("14100287", 10.0, _source("14100287")))])
+
+    with WdsClient() as wds:
+        started = time.perf_counter()
+        result = search_tables_with_structure(
+            client, "statcan-products", FakeEmbedder(), wds, "14100287", structure_wait_seconds=0.1
+        )
+        waited = time.perf_counter() - started
+        # Let the background fetch finish before the client closes.
+        time.sleep(0.6)
+
+    assert [c.product_id for c in result.candidates] == [14100287]
+    assert result.top_structure is None
+    assert waited < 0.4

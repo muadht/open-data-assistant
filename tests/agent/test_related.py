@@ -8,7 +8,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
 
 from open_data_assistant.agent.deps import AgentDeps
 from open_data_assistant.agent.related import related_tables
-from open_data_assistant.mcp.schemas import DateRange, TableCandidate
+from open_data_assistant.mcp.schemas import DateRange, TableCandidate, TableSearchResult
 from open_data_assistant.wds.client import WdsClient
 from tests.mcp.tools.test_search_tables import (
     FakeEmbedder,
@@ -30,7 +30,7 @@ def _candidate(product_id: int) -> TableCandidate:
     )
 
 
-def _searched(content: list[Any]) -> list[ModelMessage]:
+def _searched(content: Any) -> list[ModelMessage]:
     return [
         ModelRequest(
             parts=[ToolReturnPart(tool_name="search_tables", content=content, tool_call_id="s1")]
@@ -60,6 +60,14 @@ def test_reads_search_results_from_a_reloaded_history() -> None:
     messages = _searched([_candidate(18100006).model_dump(mode="json")])
 
     assert [c.product_id for c in related_tables(messages, [18100004], _deps())] == [18100006]
+
+
+def test_reads_candidates_from_search_results_with_a_structure() -> None:
+    """search_tables returns {candidates, top_structure} since #90, in-process or reloaded."""
+    result = TableSearchResult(candidates=[_candidate(18100006)], top_structure=None)
+    for content in (result, result.model_dump(mode="json")):
+        messages = _searched(content)
+        assert [c.product_id for c in related_tables(messages, [18100004], _deps())] == [18100006]
 
 
 def test_caps_the_number_of_suggestions() -> None:
